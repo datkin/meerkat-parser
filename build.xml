@@ -1,0 +1,102 @@
+<project name="meerkat" default="bundle">
+  <description>
+    A framework for writing and compiling parsing expression grammars in Java.
+  </description>
+
+  <!-- Libs -->
+  <path id="lib.classpath">
+    <fileset dir="lib">
+      <include name="**/*.jar"/>
+    </fileset>
+  </path>
+  <taskdef classpathref="lib.classpath" resource="tasks.properties"/>
+  <property name="junit" location="lib/junit-4.5.jar"/>
+
+  <!-- Source and build paths -->
+  <property name="src" location="src"/>
+  <property name="test-src" location="test"/>
+  <property name="build" location="build"/>
+  <property name="classes" location="${build}/classes"/>
+  <property name="test-classes" location="${build}/test"/>
+  <property name="lib" location="${build}/lib"/>
+  <property name="coverage" location="${build}/coverage"/>
+  <property name="meerkat" location="${lib}/meerkat.jar"/>
+
+  <!-- Build targets! -->
+  <target name="init">
+    <mkdir dir="${build}"/>
+    <mkdir dir="${classes}"/>
+    <mkdir dir="${test-classes}"/>
+    <mkdir dir="${lib}"/>
+  </target>
+
+  <target name="compile" depends="init" description="Compile Java sources">
+    <javac srcdir="${src}" destdir="${classes}" debug="true">
+      <compilerarg value="-Xlint:unchecked"/>
+    </javac>
+  </target>
+
+  <target name="test-compile" depends="compile" description="Compile Java test sources">
+    <javac srcdir="${test-src}" destdir="${test-classes}" debug="true">
+      <compilerarg value="-Xlint:unchecked"/>
+      <classpath>
+        <pathelement path="${classes}"/>
+        <pathelement location="${junit}"/>
+      </classpath>
+    </javac>
+  </target>
+
+  <target name="test" depends="test-compile" description="Run all Test* classes as junit tests">
+    <junit fork="true" printsummary="false" haltonfailure="true">
+      <classpath>
+        <pathelement path="${classes}"/>
+        <pathelement path="${test-classes}"/>
+        <pathelement path="${junit}"/>
+        <!-- <path refid="libpath"/> -->
+      </classpath>
+
+      <batchtest>
+        <formatter type="brief" usefile="false"/>
+        <fileset dir="${test-src}">
+          <include name="**/Test*.java"/>
+        </fileset>
+      </batchtest>
+    </junit>
+  </target>
+
+  <target name="bundle" depends="test" description="Create jar file">
+    <jar jarfile="${meerkat}" basedir="${classes}"/>
+  </target>
+
+  <target name="coverage" depends="test-compile" description="Check code coverage">
+    <cobertura-instrument todir="${coverage}/classes">
+      <fileset dir="${classes}">
+        <include name="**/*.class"/>
+      </fileset>
+    </cobertura-instrument>
+
+    <junit fork="true" printsummary="false" haltonfailure="true">
+      <classpath>
+        <pathelement path="${coverage}/classes"/>
+        <pathelement path="${classes}"/> <!-- need this for interface classes, etc, which cobertura doesn't instrument -->
+        <pathelement path="${test-classes}"/>
+        <pathelement path="${junit}"/>
+        <path refid="lib.classpath"/>
+      </classpath>
+
+      <batchtest>
+        <formatter type="brief" usefile="false"/>
+        <fileset dir="${test}">
+          <include name="**/Test*.java"/>
+        </fileset>
+      </batchtest>
+    </junit>
+
+    <cobertura-report format="html" destdir="${coverage}/html" srcdir="${src}"/>
+  </target>
+
+  <target name="clean" description="Remove build files">
+    <delete dir="${build}"/>
+  </target>
+
+</project>
