@@ -5,4 +5,5 @@ public interface Source<T extends Node<T>> {
   public int currentSize();
   public T get(int i);
   public T getNext(); // blocking operation to get the next token
+  public Stream<T> getStream(); //
 }
