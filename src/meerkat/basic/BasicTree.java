@@ -8,27 +8,25 @@ import meerkat.Tree;
 import meerkat.Node;
 import meerkat.TreeVisitor;
 
-public class BasicTree implements Tree<BasicNode> {
-  private final String name;
-  private final List<Node<BasicNode>> nodes;
+public class BasicTree<L> implements Tree<Void, L> {
+  private final List<Node<Void, L>> nodes;
 
-  public BasicTree(String name, List<Node<BasicNode>> nodes) {
-    this.name = name;
+  public BasicTree(List<Node<Void, L>> nodes) {
     this.nodes = nodes;
   }
 
   @Override
-  public <V> V accept(TreeVisitor<BasicNode, V> tv) {
+  public <V> V accept(TreeVisitor<Void, L, V> tv) {
     return tv.visit(this);
   }
 
   @Override
-  public Iterator<Node<BasicNode>> getNodes() {
-    return nodes.iterator();
+  public Iterable<Node<Void, L>> getNodes() {
+    return nodes; // immutable collection?
   }
 
   @Override
-  public String getName() {
-    return this.name;
+  public Void getValue() {
+    return null;
   }
 }
