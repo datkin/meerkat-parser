@@ -19,23 +19,28 @@ public class ListSource<T extends Node<T>> implements Source<T> {
     this.list = list;
   }
 
+  @Override
   public boolean hasMore() {
     return false;
   }
 
+  @Override
   public int currentSize() {
     return this.list.size();
   }
 
+  @Override
   public T get(int i) {
     return this.list.get(i); // could throw IndexOutOfBoundsException
   }
 
+  @Override
   public T getNext() {
     throw new IllegalStateException();
     //throw new UnsupportedOperationException();
   }
 
+  @Override
   public Stream<T> getStream() {
     Stream<T> stream = this.streamRef.get();
     if (stream == null) {
@@ -67,6 +72,7 @@ class BasicStream<T extends Node<T>> implements Stream<T> {
       this.next = source.get(position);
   }
 
+  @Override
   public T getNext() {
     if (this.next != null)
       return this.next;
@@ -81,6 +87,7 @@ class BasicStream<T extends Node<T>> implements Stream<T> {
     throw new IllegalStateException();
   }
 
+  @Override
   public Stream<T> getRest() {
     Stream<T> stream = this.streamRef.get();
     if (stream == null) {
@@ -90,6 +97,7 @@ class BasicStream<T extends Node<T>> implements Stream<T> {
     return stream;
   }
 
+  @Override
   public boolean hasMore() {
     // this assumes !(position > source.currentSize())
     // ie that if source.hasMore() is true, that source.getNext() is the token we want
