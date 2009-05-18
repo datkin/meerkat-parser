@@ -73,7 +73,7 @@ public class TestListSource {
     assertEquals("foo", stream1.getNext());
 
     assertTrue(stream2.hasMore());
-    assertEquals("baz", stream2.getNext());
+    assertEquals("bar", stream2.getNext());
 
     assertTrue(stream3.hasMore());
     assertEquals("baz", stream3.getNext());
