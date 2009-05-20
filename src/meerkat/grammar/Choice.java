@@ -1,5 +1,5 @@
 package meerkat.grammar;
 
 public interface Choice<T> extends Rule<T> {
-  public Iterable<Rule<T>> getRules();
+  public Iterable<Expr<T>> getExprs();
 }
