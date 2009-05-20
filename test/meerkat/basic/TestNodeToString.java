@@ -1,28 +1,36 @@
 package meerkat.basic;
 
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.Collections;
+import org.junit.Test;
+import static org.junit.Assert.*;
+
 import java.util.Iterator;
 import java.util.List;
+import java.util.LinkedList;
 
-import meerkat.Tree;
 import meerkat.Node;
+import meerkat.Tree;
 import meerkat.TreeVisitor;
 
-public class BasicTree<T, L> implements Tree<T, L> {
-  private final T t;
-  private final List<Node<T, L>> nodes;
+public class TestNodeToString {
+  @Test
+  public void cycle() {
+    final MutableTree<String, String> tree = new MutableTree<String, String>("root", new LinkedList<Node<String, String>>());
+    tree.setNodes(new LinkedList<Node<String, String>>() {{
+      add(tree);
+    }});
+    System.out.println(tree);
+  }
+}
 
-  public BasicTree(T t, List<Node<T, L>> nodes) {
+class MutableTree<T, L> implements Tree<T, L> {
+  private final T t;
+  private List<Node<T, L>> nodes;
+
+  public MutableTree(T t, List<Node<T, L>> nodes) {
     if (nodes == null)
       throw new IllegalArgumentException();
     this.t = t;
-    this.nodes = new ArrayList<Node<T, L>>(nodes);
-  }
-
-  public BasicTree(T t, Node<T, L>... nodes) {
-    this(t, Arrays.asList(nodes));
+    this.nodes = nodes;
   }
 
   @Override
@@ -32,7 +40,13 @@ public class BasicTree<T, L> implements Tree<T, L> {
 
   @Override
   public Iterable<Node<T, L>> getNodes() {
-    return Collections.unmodifiableList(this.nodes);
+    return nodes; // immutable collection?
+  }
+
+  public void setNodes(List<Node<T, L>> newNodes) {
+    if (newNodes == null)
+      throw new IllegalArgumentException();
+    this.nodes = newNodes;
   }
 
   @Override
