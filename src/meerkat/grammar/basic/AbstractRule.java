@@ -37,13 +37,11 @@ public abstract class AbstractRule<T> implements Rule<T> {
   }
 
   public static class BasicId<T> implements Rule.Id<T> {
-    private final int id;
-    private final String name;
+    protected final int id;
     private final Grammar<T> grammar;
 
-    public BasicId(int id, String name, Grammar<T> grammar) {
+    public BasicId(int id, Grammar<T> grammar) {
       this.id = id;
-      this.name = name;
       this.grammar = grammar;
     }
 
@@ -51,7 +49,7 @@ public abstract class AbstractRule<T> implements Rule<T> {
     public boolean equals(Object obj) {
       if (obj != null && this.getClass().equals(obj.getClass())) {
         BasicId id = (BasicId)obj;
-        return id.id == this.id && id.name.equals(this.name) && id.grammar.equals(this.grammar);
+        return id.id == this.id;
       }
       return false;
     }
@@ -62,18 +60,13 @@ public abstract class AbstractRule<T> implements Rule<T> {
     }
 
     @Override
-    public String getName() {
-      return this.name;
-    }
-
-    @Override
     public Grammar<T> getGrammar() {
       return this.grammar;
     }
 
     @Override
     public String toString() {
-      return getGrammar().toString() + ": " + this.getName() + " (" + id + ")";
+      return "<Rule.Id#" + id + ":" + getGrammar() + ">";
     }
   }
 }
