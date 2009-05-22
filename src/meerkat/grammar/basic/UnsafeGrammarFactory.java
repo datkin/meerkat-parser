@@ -44,6 +44,11 @@ public class UnsafeGrammarFactory<T> implements Grammar<T> {
     return realFactory.getStartingRule();
   }
 
+  @Override
+  public String toString() {
+    return realFactory.toString();
+  }
+
   public void setStartingRule(Rule<T> rule) {
     realFactory.setStartingRule(rule);
   }

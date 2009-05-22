@@ -8,14 +8,8 @@ import java.util.Set;
 import java.util.HashSet;
 
 import meerkat.grammar.*;
-/*
-import meerkat.grammar.Grammar;
-import meerkat.grammar.Expr;
-import meerkat.grammar.Sequence;
-import meerkat.grammar.Rule;
-*/
+import meerkat.grammar.util.GrammarToString;
 
-// A "messy" class for building grammars with low syntactic overhead
 public class GrammarFactory<T> implements Grammar<T> {
   private Rule<T> startingRule = null;
   private final Map<Rule<T>, Expr<T>> rules = new HashMap<Rule<T>, Expr<T>>();
@@ -24,7 +18,6 @@ public class GrammarFactory<T> implements Grammar<T> {
   public Rule<T> newRule(String name) {
     if (names.containsKey(name))
       return names.get(name);
-      //throw new IllegalArgumentException("Name '" + name + "' already taken!");
     Rule<T> rule = new BasicRule<T>(name, this);
     names.put(name, rule);
     return rule;
@@ -52,12 +45,17 @@ public class GrammarFactory<T> implements Grammar<T> {
     return startingRule;
   }
 
+  @Override
+  public String toString() {
+    return getStartingRule().accept(new GrammarToString<T>());
+  }
+
   public void setStartingRule(Rule<T> nt) {
     this.startingRule = nt;
   }
 
   public Grammar<T> getGrammar() {
-    return null; // return a final/sane grammar from this grammar
+    return null; // TODO: return a final/sane grammar from this grammar
   }
 
   public Expr<T> listToExpr(List<Expr<T>> exprs) {

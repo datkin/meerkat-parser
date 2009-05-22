@@ -4,6 +4,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 import meerkat.grammar.Rule;
+import meerkat.grammar.util.GrammarToString;
 
 public class TestUnsafeGrammarFactory {
 
@@ -16,5 +17,6 @@ public class TestUnsafeGrammarFactory {
     Rule<String> sum = gf.seqRule("Sum", product, gf.star(gf.or("+", "-"), product));
     gf.setRule(expr, sum);
     gf.setStartingRule(expr);
+    System.out.println(expr.accept(new GrammarToString<String>("'")));
   }
 }
