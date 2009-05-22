@@ -4,28 +4,28 @@ import java.util.Map;
 import java.util.HashMap;
 
 import meerkat.grammar.Grammar;
-import meerkat.grammar.Nonterminal;
+import meerkat.grammar.Rule;
 import meerkat.grammar.Expr;
 
 public class MutableGrammar<T> implements Grammar<T> {
-  private final Map<Nonterminal<T>, Expr<T>> rules = new HashMap<Nonterminal<T>, Expr<T>>();
+  private final Map<Rule<T>, Expr<T>> rules = new HashMap<Rule<T>, Expr<T>>();
 
-  public void addRule(Nonterminal<T> id, Expr<T> expr) {
+  public void addRule(Rule<T> id, Expr<T> expr) {
     rules.put(id, expr);
   }
 
   @Override
-  public Iterable<Nonterminal<T>> getNonterminals() {
+  public Iterable<Rule<T>> getRules() {
     return rules.keySet();
   }
 
   @Override
-  public Expr<T> getRule(Nonterminal<T> id) {
+  public Expr<T> getExpr(Rule<T> id) {
     return rules.get(id);
   }
 
   @Override
-  public Nonterminal<T> getStartingNonterminal() {
+  public Rule<T> getStartingRule() {
     throw new UnsupportedOperationException();
   }
 }

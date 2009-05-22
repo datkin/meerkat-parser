@@ -1,7 +1,7 @@
 package meerkat.grammar;
 
 public interface Grammar<T> {
-  public Iterable<Nonterminal<T>> getNonterminals();
-  public Expr<T> getRule(Nonterminal<T> id);
-  public Nonterminal<T> getStartingNonterminal();
+  public Iterable<Rule<T>> getRules();
+  public Expr<T> getExpr(Rule<T> rule);
+  public Rule<T> getStartingRule();
 }

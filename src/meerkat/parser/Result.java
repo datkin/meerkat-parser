@@ -1,10 +1,10 @@
 package meerkat.parser;
 
-import meerkat.grammar.Nonterminal;
+import meerkat.grammar.Rule;
 
 public interface Result<T> {
   public boolean successful();
   public ParseTree<T> getValue(); // ParseNode<T>?
-  public Nonterminal<T> getNonterminal();
+  public Rule<T> getRule();
   // perhaps some extra meta data recording state for left recursion
 }

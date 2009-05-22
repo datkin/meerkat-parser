@@ -2,14 +2,14 @@ package meerkat.grammar.basic;
 
 import meerkat.grammar.Grammar;
 import meerkat.grammar.GrammarVisitor;
-import meerkat.grammar.Nonterminal;
+import meerkat.grammar.Rule;
 
-public class BasicNonterminal<T> implements Nonterminal<T> {
+public class BasicRule<T> implements Rule<T> {
   private final String name;
   private final Grammar<T> grammar;
 
   // The Id will end up being irrelevant in this implementation if we do not provide an accessor for it
-  public BasicNonterminal(String name, Grammar<T> grammar) {
+  public BasicRule(String name, Grammar<T> grammar) {
     if (name == null || grammar == null)
       throw new IllegalArgumentException();
     this.name = name;
@@ -28,7 +28,7 @@ public class BasicNonterminal<T> implements Nonterminal<T> {
 
   @Override
   public String toString() {
-    return "<Nonterminal:" + getName() + ":" + getGrammar() + ">";
+    return "<Rule:" + getName() + ":" + getGrammar() + ">";
   }
 
   @Override
@@ -40,10 +40,10 @@ public class BasicNonterminal<T> implements Nonterminal<T> {
   public boolean equals(Object obj) {
     if (obj == null || !obj.getClass().equals(this.getClass()))
       return false;
-    BasicNonterminal bnt = (BasicNonterminal)obj;
+    BasicRule br = (BasicRule)obj;
     return
-      bnt.getName().equals(this.getName()) &&
-      bnt.getGrammar().equals(this.getGrammar());
+      br.getName().equals(this.getName()) &&
+      br.getGrammar().equals(this.getGrammar());
   }
 
   @Override
