@@ -1,5 +1,5 @@
 package meerkat.grammar;
 
-public interface Not<T> extends Rule<T> {
+public interface Not<T> extends Expr<T> {
   public Expr<T> getExpr();
 }

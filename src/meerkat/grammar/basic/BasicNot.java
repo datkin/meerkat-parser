@@ -3,13 +3,11 @@ package meerkat.grammar.basic;
 import meerkat.grammar.Not;
 import meerkat.grammar.Expr;
 import meerkat.grammar.GrammarVisitor;
-import meerkat.grammar.Rule;
 
-public class BasicNot<T> extends AbstractRule<T> implements Not<T> {
+public class BasicNot<T> implements Not<T> {
   private final Expr<T> expr;
 
-  public BasicNot(Rule.Id<T> id, Expr<T> expr) {
-    super(id);
+  public BasicNot(Expr<T> expr) {
     if (expr == null)
       throw new IllegalArgumentException();
     this.expr = expr;

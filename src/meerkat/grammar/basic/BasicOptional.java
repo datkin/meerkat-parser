@@ -3,13 +3,11 @@ package meerkat.grammar.basic;
 import meerkat.grammar.Optional;
 import meerkat.grammar.Expr;
 import meerkat.grammar.GrammarVisitor;
-import meerkat.grammar.Rule;
 
-public class BasicOptional<T> extends AbstractRule<T> implements Optional<T> {
+public class BasicOptional<T> implements Optional<T> {
   private final Expr<T> expr;
 
-  public BasicOptional(Rule.Id<T> id, Expr<T> expr) {
-    super(id);
+  public BasicOptional(Expr<T> expr) {
     if (expr == null)
       throw new IllegalArgumentException();
     this.expr = expr;

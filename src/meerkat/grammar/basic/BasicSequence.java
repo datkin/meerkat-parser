@@ -7,13 +7,11 @@ import java.util.List;
 import meerkat.grammar.Sequence;
 import meerkat.grammar.Expr;
 import meerkat.grammar.GrammarVisitor;
-import meerkat.grammar.Rule;
 
-public class BasicSequence<T> extends AbstractRule<T> implements Sequence<T> {
+public class BasicSequence<T> implements Sequence<T> {
   private final List<Expr<T>> exprs;
 
-  public BasicSequence(Rule.Id<T> id, List<Expr<T>> exprs) {
-    super(id);
+  public BasicSequence(List<Expr<T>> exprs) {
     if (exprs == null)
       throw new IllegalArgumentException();
     this.exprs = new ArrayList<Expr<T>>(exprs);

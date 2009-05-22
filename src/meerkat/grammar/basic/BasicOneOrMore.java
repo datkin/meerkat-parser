@@ -3,13 +3,11 @@ package meerkat.grammar.basic;
 import meerkat.grammar.OneOrMore;
 import meerkat.grammar.Expr;
 import meerkat.grammar.GrammarVisitor;
-import meerkat.grammar.Rule;
 
-public class BasicOneOrMore<T> extends AbstractRule<T> implements OneOrMore<T> {
+public class BasicOneOrMore<T> implements OneOrMore<T> {
   private final Expr<T> expr;
 
-  public BasicOneOrMore(Rule.Id<T> id, Expr<T> expr) {
-    super(id);
+  public BasicOneOrMore(Expr<T> expr) {
     if (expr == null)
       throw new IllegalArgumentException();
     this.expr = expr;

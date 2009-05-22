@@ -1,7 +1,7 @@
 package meerkat.parser;
 
 import meerkat.Node;
-import meerkat.grammar.Rule;
+import meerkat.grammar.Nonterminal;
 
-public interface ParseNode<T> extends Node<Rule.Id<T>, T> {
+public interface ParseNode<T> extends Node<Nonterminal<T>, T> {
 }
