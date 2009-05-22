@@ -4,8 +4,8 @@ public interface GrammarVisitor<T, V> {
   public V visit(Sequence<T> seq);
   public V visit(Choice<T> choice);
   public V visit(Optional<T> opt);
-  public V visit(Not<T> not);
   public V visit(And<T> and);
+  public V visit(Not<T> not);
   public V visit(ZeroOrMore<T> zom);
   public V visit(OneOrMore<T> oom);
   public V visit(Class<? extends T> clazz); // for class match (.equals())
