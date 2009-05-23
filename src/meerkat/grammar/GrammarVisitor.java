@@ -10,6 +10,6 @@ public interface GrammarVisitor<T, V> {
   public V visit(OneOrMore<T> oom);
   public V visit(Class<? extends T> clazz); // for class match (.equals())
   public V visit(T t); // for exact match (.equals())
-  public V visit(Rule<T> rule);
+  public V visit(Rule<T> rule); // consider overloading this with a boolean descend arg
   //public V visit(Comparator<T> c);
 }
