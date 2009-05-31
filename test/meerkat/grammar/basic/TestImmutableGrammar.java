@@ -3,9 +3,15 @@ package meerkat.grammar.basic;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
+import java.util.List;
+import java.util.LinkedList;
+
 import meerkat.grammar.Grammar;
 import meerkat.grammar.Rule;
 import example.sexp.Token;
+
+//import meerkat.parser.Parser;
+//import meerkat.parser.BasicParser;
 
 public class TestImmutableGrammar {
 
@@ -35,5 +41,19 @@ public class TestImmutableGrammar {
     gf.setStartingRule(gf.orRule("Additive", gf.seq(multitive, "+", additive), multitive));
     Grammar<String> g = new ImmutableGrammar<String>(gf);
     System.out.println(g);
+
+    List<String> l = new LinkedList<String>();
+    l.add("1");
+    l.add("*");
+    l.add("2");
+    l.add("+");
+    l.add("(");
+    l.add("3");
+    l.add("*");
+    l.add("4");
+    l.add(")");
+
+    //BasicParser<String> p = new BasicParser<String>(gf);
+    //System.out.println(p.parse(new meerkat.basic.ListSource<String>(l)).getValue());
   }
 }

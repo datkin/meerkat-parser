@@ -14,13 +14,17 @@ import meerkat.basic.BasicLeaf;
 public interface ParseTree<T> extends Tree<Rule<T>, T>, ParseNode<T> {
 }
 
-/*
 class BasicParseTree<T> extends BasicTree<Rule<T>, T> implements ParseTree<T> {
+  public BasicParseTree(Rule<T> rule, List<ParseNode<T>> nodes) {
+    super(rule, new ArrayList<Node<Rule<T>, T>>(nodes));
+  }
+
+/*
   public BasicParseTree(Rule<T> rule, List<ParseNode<T>> nodes) {
     super(rule, (List<Node<Rule<T>, T>>)nodes);
   }
-}
 */
+}
 
 class BasicParseLeaf<T> extends BasicLeaf<Rule<T>, T> implements ParseNode<T> {
   public BasicParseLeaf(T t) {
@@ -28,6 +32,7 @@ class BasicParseLeaf<T> extends BasicLeaf<Rule<T>, T> implements ParseNode<T> {
   }
 }
 
+/*
 class BasicParseTree<T> implements ParseTree<T> {
   private final Rule<T> rule;
   private final List<Node<Rule<T>, T>> nodes;
@@ -54,3 +59,4 @@ class BasicParseTree<T> implements ParseTree<T> {
     return rule;
   }
 }
+*/

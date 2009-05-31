@@ -11,17 +11,18 @@ import meerkat.Stream;
 import meerkat.Source;
 import meerkat.grammar.*;
 
-public class PackratParser<T> implements Parser<T> {
+public class BasicParser<T> implements Parser<T> {
   private final Grammar<T> grammar;
   //private final NaiveEngine<T> engine;
 
-  public PackratParser(Grammar<T> grammar) {
+  public BasicParser(Grammar<T> grammar) {
     if (grammar == null)
       throw new IllegalArgumentException();
     this.grammar = grammar;
     //this.engine = new NaiveEngine(this);
   }
 
+  @Override
   public Result<T> parse(Source<T> source) {
     return parse(source.getStream(), grammar.getStartingRule());
   }
@@ -237,9 +238,6 @@ class BasicResult<T> implements Result<T> {
 
   @Override
   public boolean successful() { return this.success; }
-
-  @Override
-  public boolean hasValue() { return this.value != null; }
 
   @Override
   public ParseNode<T> getValue() { return this.value; }

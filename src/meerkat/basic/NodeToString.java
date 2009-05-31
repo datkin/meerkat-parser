@@ -44,7 +44,7 @@ public class NodeToString<T, L> implements TreeVisitor<T, L, String> {
       sb.append(n.accept(this));
     }
     indent--;
-    sb.append(indent()).append("]");
+    sb.append(indent()).append("]\n");
     return sb.toString();
   }
 

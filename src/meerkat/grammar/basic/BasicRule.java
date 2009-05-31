@@ -28,7 +28,7 @@ public class BasicRule<T> implements Rule<T> {
 
   @Override
   public String toString() {
-    return "<Rule:" + getName() + ":" + getGrammar() + ">";
+    return "<Rule:" + getName() + ">"; //":" + getGrammar() + ">";
   }
 
   @Override

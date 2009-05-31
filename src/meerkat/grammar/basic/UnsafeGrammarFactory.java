@@ -11,9 +11,8 @@ import meerkat.grammar.*;
 
 // A class for building grammars with "low" syntactic overhead (checked at runtime)
 public class UnsafeGrammarFactory<T> implements Grammar<T> {
-  private Rule<T> startingRule = null;
-  private final Map<Rule<T>, Expr<T>> rules = new HashMap<Rule<T>, Expr<T>>();
-  private final Map<String, Rule<T>> names = new HashMap<String, Rule<T>>();
+  //private final Map<Rule<T>, Expr<T>> rules = new HashMap<Rule<T>, Expr<T>>();
+  //private final Map<String, Rule<T>> names = new HashMap<String, Rule<T>>();
 
   private final Class<T> clazz;
   private final GrammarFactory<T> realFactory;
@@ -54,7 +53,8 @@ public class UnsafeGrammarFactory<T> implements Grammar<T> {
   }
 
   public Grammar<T> getGrammar() {
-    return null; // return a final/sane grammar from this grammar
+    // TODO: do some sanity checking of this grammar?
+    return realFactory.getGrammar();
   }
 
   @SuppressWarnings("unchecked")

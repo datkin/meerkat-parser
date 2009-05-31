@@ -6,7 +6,8 @@ import java.lang.ref.WeakReference;
 import meerkat.Stream;
 import meerkat.Source;
 
-class BasicStream<T> implements Stream<T> {
+// package visible only?
+public class BasicStream<T> implements Stream<T> {
   private final Source<T> source;
   private final int position;
   private T next = null;
@@ -58,5 +59,14 @@ class BasicStream<T> implements Stream<T> {
     // this assumes !(position > source.currentSize())
     // ie that if source.hasMore() is true, that source.getNext() is the token we want
     return this.next != null || source.hasMore();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj != null && obj.getClass().equals(this.getClass())) {
+      BasicStream bs = (BasicStream)obj;
+      return bs.source.equals(this.source) && bs.position == this.position;
+    }
+    return false;
   }
 }

@@ -18,6 +18,14 @@ public class ListSource<T> implements Source<T> {
   }
 
   @Override
+  public boolean equals(Object obj) {
+    if (obj != null && obj.getClass().equals(this.getClass())) {
+      return ((ListSource)obj).list.equals(this.list);
+    }
+    return false;
+  }
+
+  @Override
   public boolean hasMore() {
     return false;
   }

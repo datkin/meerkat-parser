@@ -15,8 +15,15 @@ public class ImmutableGrammar<T> implements Grammar<T> {
   public ImmutableGrammar(Grammar<T> grammar) {
     if (grammar == null)
       throw new IllegalArgumentException();
-    this.startingRule = grammar.getStartingRule();
-    this.startingRule.accept(new GrammarBuilder<T>(this));
+    grammar.getStartingRule().accept(new GrammarBuilder<T>(this));
+    for (Rule<T> r : rules.keySet()) {
+      if (r.getName().equals(grammar.getStartingRule().getName())) {
+        this.startingRule = r;
+        return;
+      }
+    }
+    // should probably throw an error if this doesn't get set
+    this.startingRule = new BasicRule<T>(grammar.getStartingRule().getName(), this);
   }
 
   @Override

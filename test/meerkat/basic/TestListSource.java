@@ -34,6 +34,21 @@ public class TestListSource {
   }
 
   @Test
+  public void streamEquals() {
+    Source<String> source = new ListSource<String>(list);
+    Stream<String> stream1 = new BasicStream<String>(source, 1);
+    Stream<String> stream2 = new BasicStream<String>(source, 1);
+    Stream<String> stream3 = new BasicStream<String>(source, 2);
+    assertTrue(stream1.equals(stream1)); // reflexive
+
+    assertTrue(stream1.equals(stream2)); // symmetric
+    assertTrue(stream2.equals(stream1));
+
+    assertFalse(stream3.equals(stream1)); // !=
+    assertFalse(stream1.equals(stream3));
+  }
+
+  @Test
   public void streams() {
     Source<String> source = new ListSource<String>(list);
 

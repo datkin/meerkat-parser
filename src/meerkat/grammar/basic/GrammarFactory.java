@@ -40,9 +40,9 @@ public class GrammarFactory<T> implements Grammar<T> {
 
   @Override
   public Rule<T> getStartingRule() {
-    if (startingRule == null)
+    if (this.startingRule == null)
       throw new IllegalStateException();
-    return startingRule;
+    return this.startingRule;
   }
 
   @Override
@@ -55,7 +55,7 @@ public class GrammarFactory<T> implements Grammar<T> {
   }
 
   public Grammar<T> getGrammar() {
-    return null; // TODO: return a final/sane grammar from this grammar
+    return new ImmutableGrammar<T>(this); // TODO: return a final/sane grammar from this grammar
   }
 
   public Expr<T> listToExpr(List<Expr<T>> exprs) {
