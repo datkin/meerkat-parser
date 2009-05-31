@@ -4,6 +4,9 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedList;
 
 import meerkat.grammar.*;
 import meerkat.grammar.util.GrammarToString;
@@ -15,7 +18,8 @@ public class ImmutableGrammar<T> implements Grammar<T> {
   public ImmutableGrammar(Grammar<T> grammar) {
     if (grammar == null)
       throw new IllegalArgumentException();
-    grammar.getStartingRule().accept(new GrammarBuilder<T>(this));
+    this.startingRule = (Rule<T>)grammar.getStartingRule().accept(new GrammarBuilder<T>(this));
+    /*
     for (Rule<T> r : rules.keySet()) {
       if (r.getName().equals(grammar.getStartingRule().getName())) {
         this.startingRule = r;
@@ -24,6 +28,7 @@ public class ImmutableGrammar<T> implements Grammar<T> {
     }
     // should probably throw an error if this doesn't get set
     this.startingRule = new BasicRule<T>(grammar.getStartingRule().getName(), this);
+    */
   }
 
   @Override
@@ -46,8 +51,10 @@ public class ImmutableGrammar<T> implements Grammar<T> {
     return startingRule.accept(new GrammarToString<T>());
   }
 
-  private static class GrammarBuilder<T> implements GrammarVisitor<T, Void> {
+  // copy an existing grammar to the output grammar
+  private static class GrammarBuilder<T> implements GrammarVisitor<T, Expr<T>> {
     private final Set<Rule<T>> seen = new HashSet<Rule<T>>();
+    private final Map<String, Rule<T>> newRules = new HashMap<String, Rule<T>>();
     private final ImmutableGrammar<T> outputGrammar;
 
     public GrammarBuilder(ImmutableGrammar<T> outputGrammar) {
@@ -55,66 +62,74 @@ public class ImmutableGrammar<T> implements Grammar<T> {
     }
 
     @Override
-    public Void visit(Rule<T> rule) {
+    public Expr<T> visit(Rule<T> rule) {
       if (seen.contains(rule))
-        return null;
+        return newRules.get(rule.getName()); // this should NOT BE NULL!
       seen.add(rule);
-      Expr<T> expr = rule.getGrammar().getExpr(rule);
-      expr.accept(this);
+      Rule<T> newRule = new BasicRule<T>(rule.getName(), outputGrammar);
+      newRules.put(rule.getName(), newRule);
+      Expr<T> newExpr = rule.getGrammar().getExpr(rule).accept(this);
+      outputGrammar.rules.put(newRule, newExpr);
+      return newRule;
+
+      /*
       // Not sure why this doesn't work (when GrammarBuilder is declared non-static)
       // ImmutableGrammar.this.rules.put(new BasicRule<T>(rule.getName(), (Grammar<T>)ImmutableGrammar.this), expr);
       Rule<T> newRule = new BasicRule<T>(rule.getName(), outputGrammar);
       outputGrammar.rules.put(newRule, expr);
       return null;
+      */
     }
 
     @Override
-    public Void visit(Sequence<T> seq) {
+    public Expr<T> visit(Sequence<T> seq) {
+      List<Expr<T>> newExprs = new LinkedList<Expr<T>>();
       for (Expr<T> e : seq.getExprs())
-        e.accept(this);
-      return null;
+        newExprs.add(e.accept(this));
+      return new BasicSequence<T>(new ArrayList<Expr<T>>(newExprs));
     }
 
     @Override
-    public Void visit(Choice<T> choice) {
+    public Expr<T> visit(Choice<T> choice) {
+      List<Expr<T>> newExprs = new LinkedList<Expr<T>>();
       for (Expr<T> e : choice.getExprs())
-        e.accept(this);
-      return null;
+        newExprs.add(e.accept(this));
+      return new BasicChoice<T>(new ArrayList<Expr<T>>(newExprs));
     }
 
     @Override
-    public Void visit(Optional<T> opt) {
-      return opt.getExpr().accept(this);
+    public Expr<T> visit(Optional<T> opt) {
+      return new BasicOptional<T>(opt.getExpr().accept(this));
     }
 
     @Override
-    public Void visit(And<T> and) {
-      return and.getExpr().accept(this);
+    public Expr<T> visit(And<T> and) {
+      return new BasicAnd<T>(and.getExpr().accept(this));
     }
 
     @Override
-    public Void visit(Not<T> not) {
-      return not.getExpr().accept(this);
+    public Expr<T> visit(Not<T> not) {
+      return new BasicNot<T>(not.getExpr().accept(this));
     }
 
     @Override
-    public Void visit(ZeroOrMore<T> zom) {
-      return zom.getExpr().accept(this);
+    public Expr<T> visit(ZeroOrMore<T> zom) {
+      return new BasicZeroOrMore<T>(zom.getExpr().accept(this));
     }
 
     @Override
-    public Void visit(OneOrMore<T> oom) {
-      return oom.getExpr().accept(this);
+    public Expr<T> visit(OneOrMore<T> oom) {
+      return new BasicOneOrMore<T>(oom.getExpr().accept(this));
     }
 
     @Override
-    public Void visit(Class<? extends T> clazz) {
-      return null;
+    public Expr<T> visit(Class<? extends T> clazz) {
+      return new BasicTerminalClass<T>(clazz);
     }
 
     @Override
-    public Void visit(T t) {
-      return null;
+    public Expr<T> visit(T t){
+      return new BasicTerminal<T>(t);
     }
   }
 }
