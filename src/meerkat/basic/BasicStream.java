@@ -63,7 +63,7 @@ public class BasicStream<T> implements Stream<T> {
 
   @Override
   public int hashCode() {
-    return this.source.hashCode() + this.position;
+    return 31 * this.source.hashCode() + this.position;
   }
 
   @Override

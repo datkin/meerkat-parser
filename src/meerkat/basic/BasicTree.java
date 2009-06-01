@@ -42,7 +42,7 @@ public class BasicTree<T, L> implements Tree<T, L> {
 
   @Override
   public int hashCode() {
-    return getValue().hashCode() + nodes.size();
+    return 31 * getValue().hashCode() + nodes.size();
   }
 
   @Override

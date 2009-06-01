@@ -135,7 +135,7 @@ class CachedEngine<T> implements Engine<T> {
 
     @Override
     public int hashCode() {
-      return this.start.hashCode() + this.expr.hashCode();
+      return 31 * this.start.hashCode() + this.expr.hashCode();
     }
 
     @Override
