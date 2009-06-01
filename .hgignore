@@ -3,4 +3,3 @@ build/*
 *.swp
 cobertura.ser
 lib/*
-lib/*
