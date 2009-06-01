@@ -48,6 +48,7 @@
 
   <target name="test" depends="test-compile" description="Run all Test* classes as junit tests">
     <junit fork="true" printsummary="false" haltonfailure="true">
+      <jvmarg value="-server"/>
       <classpath>
         <pathelement path="${classes}"/>
         <pathelement path="${test-classes}"/>
