@@ -62,6 +62,11 @@ public class BasicStream<T> implements Stream<T> {
   }
 
   @Override
+  public int hashCode() {
+    return this.source.hashCode() + this.position;
+  }
+
+  @Override
   public boolean equals(Object obj) {
     if (obj != null && obj.getClass().equals(this.getClass())) {
       BasicStream bs = (BasicStream)obj;

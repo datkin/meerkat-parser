@@ -18,6 +18,11 @@ public class ListSource<T> implements Source<T> {
   }
 
   @Override
+  public int hashCode() {
+    return this.list.hashCode();
+  }
+
+  @Override
   public boolean equals(Object obj) {
     if (obj != null && obj.getClass().equals(this.getClass())) {
       return ((ListSource)obj).list.equals(this.list);

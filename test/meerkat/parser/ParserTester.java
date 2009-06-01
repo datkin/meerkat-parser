@@ -9,6 +9,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 import meerkat.grammar.basic.UnsafeGrammarFactory;
+import meerkat.grammar.basic.BasicRule;
 import meerkat.grammar.*;
 
 import meerkat.Source;
@@ -278,6 +279,28 @@ public class ParserTester {
 
     r = p.parse(getSourceForString("aabbcca"));
     assertFalse(r.successful());
+  }
+
+  public static void testCaching(Class<? extends Parser> clazz) {
+    UnsafeGrammarFactory<String> ugf = new UnsafeGrammarFactory<String>(String.class);
+    Rule<String> seq = ugf.seqRule("seq", "a", "b", "c");
+    ugf.setStartingRule(ugf.orRule("start", ugf.seq(seq, "x"), seq));
+    Grammar<String> g = ugf.getGrammar();
+    Parser<String> p = getParser(clazz, g);
+    Rule<String> gStart = g.getStartingRule();
+    Rule<String> gSeq = new BasicRule<String>("seq", g);
+
+    Result<String> r;
+
+    r = p.parse(getSourceForString("abc"));
+    assertTrue(r.successful());
+    assertEquals(newParseTree(gStart, newParseTree(gSeq, "a", "b", "c")), r.getValue());
+    assertFalse(r.getRest().hasMore());
+
+    r = p.parse(getSourceForString("abcx"));
+    assertTrue(r.successful());
+    assertEquals(newParseTree(gStart, newParseTree(gSeq, "a", "b", "c"), "x"), r.getValue());
+    assertFalse(r.getRest().hasMore());
   }
 
   @SuppressWarnings("unchecked")
