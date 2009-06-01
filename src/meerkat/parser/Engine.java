@@ -27,7 +27,7 @@ class ListResult<T> {
 
   public ListResult(List<ParseNode<T>> nodes, Stream<T> rest) {
     if (nodes == null || rest == null)
-      throw new IllegalArgumentException(nodes + ", " + rest);
+      throw new IllegalArgumentException();
     this.success = true;
     this.nodes = nodes;
     this.rest = rest;
