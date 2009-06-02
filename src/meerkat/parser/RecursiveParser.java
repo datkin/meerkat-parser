@@ -2,6 +2,8 @@ package meerkat.parser;
 
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
+import java.util.HashSet;
 
 import meerkat.Stream;
 import meerkat.grammar.Grammar;
@@ -9,6 +11,8 @@ import meerkat.grammar.Rule;
 
 public class RecursiveParser<T> extends AbstractParser<T> {
   private final Map<CacheKey<T>, CacheEntry<T>> cache = new HashMap<CacheKey<T>, CacheEntry<T>>();
+  private final Map<Stream<T>, Head<T>> heads = new HashMap<Stream<T>, Head<T>>();
+  private LeftRecur<T> topLR = null;
 
   public RecursiveParser(Grammar<T> grammar) {
     super(grammar, new BaseEngineFactory<T>());
@@ -19,59 +23,152 @@ public class RecursiveParser<T> extends AbstractParser<T> {
   // the parse engine continues parsing with
   @Override
   public Result<T> parse(Stream<T> stream, Rule<T> rule) {
-    CacheKey<T> key = new CacheKey<T>(rule, stream);
-    CacheEntry<T> entry;
-    if (!cache.containsKey(key)) {
-      entry = new CacheEntry<T>();
+    CacheEntry<T> entry = recall(stream, rule);
+    if (entry == null) {
+      CacheKey<T> key = new CacheKey<T>(rule, stream);
+      // Create an LR and push it on the stack
+      LeftRecur<T> lr = new LeftRecur<T>(rule, this.topLR);
+      this.topLR = lr;
+      // Memoize the LR and evaluate the rule
+      entry = new CacheEntry<T>(lr);
       cache.put(key, entry);
-      entry.setResult(super.parse(stream, rule));
-      if (entry.detectedLR()) {
-        return growLR(stream, rule, entry);
+      Result<T> result = super.parse(stream, rule);
+      // Pop LR from the stack
+      this.topLR = this.topLR.next;
+      // MISSING: update the memoized position?
+      if (lr.head != null) {
+        lr.seed = result;
+        return answerLR(stream, rule, entry);
+      } else {
+        entry.result = result;
+        return result;
       }
     } else {
-      entry = cache.get(key);
-      if (!entry.hasResult()) {
-        entry.detectedLR = true;
-        return new BasicResult<T>(null, null);
+      if (!entry.hasResult()) { // ie entry.hasLR()
+        return setupLR(rule, entry.getLR()).seed;
       }
     }
     return entry.getResult();
   }
 
-  private Result<T> growLR(Stream<T> stream, Rule<T> rule, CacheEntry<T> entry) {
-    Result<T> result;
-    while ((result = super.parse(stream, rule)).successful() &&
-        result.getRest().getPosition() > entry.getResult().getRest().getPosition())
+  private LeftRecur<T> setupLR(Rule<T> rule, LeftRecur<T> lr) {
+    if (lr.head == null)
+      lr.head = new Head<T>(rule);
+    LeftRecur<T> stack = this.topLR;
+    while (!lr.head.equals(stack.head)) { // expect stack.head to be null, b/c it hasn't be setup yet
+      stack.head = lr.head;
+      lr.head.involvedSet.add(stack.rule);
+      stack = stack.next;
+    }
+    return lr;
+  }
+
+  private Result<T> answerLR(Stream<T> stream, Rule<T> rule, CacheEntry<T> entry) {
+    Head<T> head = entry.getLR().head;
+    if (!head.rule.equals(rule)) {
+      return entry.getLR().seed;
+    }
+    entry.setResult(entry.getLR().seed);
+    if (!entry.getResult().successful()) {
+      return entry.getResult();
+    }
+    return growLR(stream, rule, entry, head);
+  }
+
+  private Result<T> growLR(Stream<T> stream, Rule<T> rule, CacheEntry<T> entry, Head<T> head) {
+    this.heads.put(stream, head);
+    while (true) {
+      head.evalSet = new HashSet<Rule<T>>(head.involvedSet);
+      Result<T> result = super.parse(stream, rule);
+      if (!result.successful() || result.getRest().getPosition() <= entry.getResult().getRest().getPosition()) {
+        this.heads.remove(stream);
+        return entry.getResult();
+      }
       entry.setResult(result);
-    return entry.getResult();
+    }
+  }
+
+  // TODO: make this take a cache key instead?
+  // Note: this does *not* add anything to the cache (aka memo table)
+  private CacheEntry<T> recall(Stream<T> stream, Rule<T> rule) {
+    CacheKey<T> key = new CacheKey<T>(rule, stream);
+    CacheEntry<T> entry = cache.get(key);
+    Head<T> head = this.heads.get(stream);
+    if (head == null) {
+      return entry;
+    }
+    if (entry == null && !head.rule.equals(rule) && ! head.involvedSet.contains(rule)) {
+      return new CacheEntry<T>(new BasicResult<T>(null, null)); // MISSING: store the position
+    }
+    if (head.evalSet.contains(rule)) {
+      head.evalSet.remove(rule);
+      entry.result = super.parse(stream, rule);
+    }
+    return entry;
   }
 }
 
 class CacheEntry<T> {
-  boolean detectedLR = false;
+  LeftRecur<T> lr = null;
   Result<T> result = null;
 
-  public CacheEntry() {
+  public CacheEntry(LeftRecur<T> lr) {
+    this.lr = lr;
   }
 
   public CacheEntry(Result<T> result) {
     this.result = result;
   }
 
-  // check this to determine if it's a check for LR or not
-  public boolean hasResult() {
-    return result != null;
+  public boolean hasLR() {
+    return this.lr != null;
   }
 
-  public boolean detectedLR() {
-    return detectedLR;
+  // check this to determine if it's a check for LR or not
+  public boolean hasResult() {
+    return this.result != null;
   }
 
   public void setResult(Result<T> result) {
+    this.lr = null;
     this.result = result;
+  }
+
+  public LeftRecur<T> getLR() {
+    return this.lr;
   }
 
   public Result<T> getResult() {
     return this.result;
+  }
+}
+
+class LeftRecur<T> {
+  Result<T> seed = new BasicResult<T>(null, null);
+  Rule<T> rule;
+  Head<T> head = null;
+  LeftRecur<T> next;
+
+  public LeftRecur(Rule<T> rule, LeftRecur<T> next) {
+    this.rule = rule;
+    this.next = next;
+  }
+}
+
+class Head<T> {
+  Rule<T> rule;
+  Set<Rule<T>> involvedSet = new HashSet<Rule<T>>();
+  Set<Rule<T>> evalSet = new HashSet<Rule<T>>();
+
+  public Head(Rule<T> rule) {
+    this.rule = rule;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj != null && obj.getClass().equals(this.getClass())) {
+      return ((Head)obj).rule.equals(this.rule); // don't both comparing the sets?
+    }
+    return false;
   }
 }
