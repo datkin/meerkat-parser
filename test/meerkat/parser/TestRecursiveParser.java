@@ -13,8 +13,71 @@ public class TestRecursiveParser {
 
   @Test
   public void test() {
-    testRecursionDetection(RecursiveParser.class);
+    //testRecursionDetection(RecursiveParser.class);
+    testDirectLR(RecursiveParser.class);
     ParserTester.testParser(RecursiveParser.class);
+    ParserTester.testCaching(RecursiveParser.class);
+  }
+
+  public void testDirectLR(Class<? extends Parser> clazz) {
+    Grammar<String> g = getDirectLRGrammar();
+    Parser<String> p = getParser(clazz, g);
+    Rule<String> expr = g.getStartingRule();
+    Rule<String> digit = new BasicRule<String>("digit", g);
+    Rule<String> num = new BasicRule<String>("num", g);
+
+    Result<String> r;
+
+    r = p.parse(getSourceForString("12"));
+    assertTrue(r.successful());
+    assertEquals(newParseTree(expr, newParseTree(num, "1", "2")), r.getValue());
+    assertFalse(r.getRest().hasMore());
+
+    r = p.parse(getSourceForString("12-10"));
+    assertTrue(r.successful());
+    assertEquals(newParseTree(expr,
+          newParseTree(expr,
+            newParseTree(num, "1", "2")),
+          "-",
+          newParseTree(num, "1", "0")),
+        r.getValue());
+    assertFalse(r.getRest().hasMore());
+
+    r = p.parse(getSourceForString("12-10x"));
+    assertTrue(r.successful());
+    assertEquals(newParseTree(expr,
+          newParseTree(expr,
+            newParseTree(num, "1", "2")),
+          "-",
+          newParseTree(num, "1", "0")),
+        r.getValue());
+    assertEquals(getSourceForString("12-10x").getStream().getRest().getRest().getRest().getRest().getRest(), r.getRest());
+
+    r = p.parse(getSourceForString("25-12-10"));
+    assertTrue(r.successful());
+    assertEquals(newParseTree(expr,
+          newParseTree(expr,
+            newParseTree(expr,
+              newParseTree(num, "2", "5")),
+            "-",
+            newParseTree(num, "1", "2")),
+          "-",
+          newParseTree(num, "1", "0")),
+        r.getValue());
+    assertFalse(r.getRest().hasMore());
+
+    r = p.parse(getSourceForString("5-2-1xy"));
+    assertTrue(r.successful());
+    assertEquals(newParseTree(expr,
+          newParseTree(expr,
+            newParseTree(expr,
+              newParseTree(num, "5")),
+            "-",
+            newParseTree(num, "2")),
+          "-",
+          newParseTree(num, "1")),
+        r.getValue());
+    assertEquals(getSourceForString("5-2-1xy").getStream().getRest().getRest().getRest().getRest().getRest(), r.getRest());
   }
 
   public void testRecursionDetection(Class<? extends Parser> clazz) {

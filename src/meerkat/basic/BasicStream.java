@@ -55,6 +55,11 @@ public class BasicStream<T> implements Stream<T> {
   }
 
   @Override
+  public int getPosition() {
+    return this.position;
+  }
+
+  @Override
   public boolean hasMore() {
     // this assumes !(position > source.currentSize())
     // ie that if source.hasMore() is true, that source.getNext() is the token we want
