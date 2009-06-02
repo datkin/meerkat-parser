@@ -330,7 +330,7 @@ public class ParserTester {
   }
 
   @SuppressWarnings("unchecked")
-  private static ParseNode<String> newParseTree(Rule<String> rule, Object... objs) {
+  public static ParseNode<String> newParseTree(Rule<String> rule, Object... objs) {
     List<ParseNode<String>> nodes = new LinkedList<ParseNode<String>>();
     for (int i = 0; i < objs.length; i++) {
       if (objs[i] instanceof String) {
@@ -345,7 +345,7 @@ public class ParserTester {
   }
 
   @SuppressWarnings("unchecked")
-  private static Parser<String> getParser(Class<? extends Parser> clazz, Grammar<String> grammar) {
+  public static Parser<String> getParser(Class<? extends Parser> clazz, Grammar<String> grammar) {
     try {
       Constructor<? extends Parser> c = clazz.getConstructor(Grammar.class);
       return (Parser<String>)c.newInstance(grammar);
