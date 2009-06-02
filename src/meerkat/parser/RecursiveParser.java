@@ -15,37 +15,35 @@ public class RecursiveParser<T> extends AbstractParser<T> {
   }
 
   // Remember: no need to do Stream position management;
-  // whatever stream is returned by out result will be the one
-  // that the parse engine continues parsing with
+  // whatever stream is returned by the result will be the one
+  // the parse engine continues parsing with
   @Override
   public Result<T> parse(Stream<T> stream, Rule<T> rule) {
     CacheKey<T> key = new CacheKey<T>(rule, stream);
+    CacheEntry<T> entry;
     if (!cache.containsKey(key)) {
-      CacheEntry<T> entry = new CacheEntry<T>();
+      entry = new CacheEntry<T>();
       cache.put(key, entry);
-      entry.result = super.parse(stream, rule);
+      entry.setResult(super.parse(stream, rule));
       if (entry.detectedLR()) {
         return growLR(stream, rule, entry);
       }
-      return entry.result;
     } else {
-      CacheEntry<T> entry = cache.get(key);
-      if (!entry.hasResult()) { // if m.ans is LR
+      entry = cache.get(key);
+      if (!entry.hasResult()) {
         entry.detectedLR = true;
         return new BasicResult<T>(null, null);
       }
-      return entry.result;
     }
+    return entry.getResult();
   }
 
   private Result<T> growLR(Stream<T> stream, Rule<T> rule, CacheEntry<T> entry) {
-    while (true) {
-      Result<T> result = super.parse(stream, rule);
-      if (!result.successful() || result.getRest().getPosition() <= entry.result.getRest().getPosition()) {
-        return entry.result;
-      }
-      entry.result = result;
-    }
+    Result<T> result;
+    while ((result = super.parse(stream, rule)).successful() &&
+        result.getRest().getPosition() > entry.getResult().getRest().getPosition())
+      entry.setResult(result);
+    return entry.getResult();
   }
 }
 
