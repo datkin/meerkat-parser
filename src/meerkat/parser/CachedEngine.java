@@ -28,7 +28,9 @@ class CachedEngine<T> implements Engine<T> {
 
   private ListResult<T> get(CacheKey<T> key) {
     //System.out.println("cache hit on: " + key);
-    return cache.get(key);
+    ListResult<T> r = cache.get(key);
+    setStream(r.getRest());
+    return r;
   }
 
   @Override
@@ -41,6 +43,10 @@ class CachedEngine<T> implements Engine<T> {
     return result;
   }
 
+  // All these other cachings are useless unless we can do some sort of
+  // "common sub expr elimination" and use the cache results across
+  // different rules. The other problem here is that even if we cache
+  // correctly, we do not restore the state properly! (?)
   @Override
   public ListResult<T> visit(Sequence<T> expr) {
     CacheKey<T> key = new CacheKey<T>(expr, getStream());
@@ -122,23 +128,25 @@ class CachedEngine<T> implements Engine<T> {
     return child.visit(t);
   }
 
-  private static class CacheKey<T> {
-    private final Expr<T> expr;
-    private final Stream<T> start;
+}
 
-    public CacheKey(Expr<T> expr, Stream<T> start) {
-      if (expr == null || start == null)
-        throw new IllegalArgumentException();
-      this.expr = expr;
-      this.start = start;
-    }
+class CacheKey<T> {
+  private final Expr<T> expr;
+  private final Stream<T> start;
 
-    @Override
+  public CacheKey(Expr<T> expr, Stream<T> start) {
+    if (expr == null || start == null)
+      throw new IllegalArgumentException();
+    this.expr = expr;
+    this.start = start;
+  }
+
+  @Override
     public int hashCode() {
       return 31 * this.start.hashCode() + this.expr.hashCode();
     }
 
-    @Override
+  @Override
     public boolean equals(Object obj) {
       if (obj != null && obj.getClass().equals(this.getClass())) {
         CacheKey key = (CacheKey)obj;
@@ -148,9 +156,8 @@ class CachedEngine<T> implements Engine<T> {
       return false;
     }
 
-    @Override
+  @Override
     public String toString() {
       return "<Key: " + expr + ", " + start + ">";
     }
-  }
 }

@@ -297,9 +297,35 @@ public class ParserTester {
     assertEquals(newParseTree(gStart, newParseTree(gSeq, "a", "b", "c")), r.getValue());
     assertFalse(r.getRest().hasMore());
 
+    r = p.parse(getSourceForString("abcy"));
+    assertTrue(r.successful());
+    assertEquals(newParseTree(gStart, newParseTree(gSeq, "a", "b", "c")), r.getValue());
+    assertEquals(getSourceForString("abcy").getStream().getRest().getRest().getRest(), r.getRest());
+
     r = p.parse(getSourceForString("abcx"));
     assertTrue(r.successful());
     assertEquals(newParseTree(gStart, newParseTree(gSeq, "a", "b", "c"), "x"), r.getValue());
+    assertFalse(r.getRest().hasMore());
+
+    r = p.parse(getSourceForString("abcxy"));
+    assertTrue(r.successful());
+    assertEquals(newParseTree(gStart, newParseTree(gSeq, "a", "b", "c"), "x"), r.getValue());
+    assertEquals(getSourceForString("abcxy").getStream().getRest().getRest().getRest().getRest(), r.getRest());
+
+    ugf.setStartingRule(ugf.orRule("start2", ugf.seq(seq, "y"), ugf.seq(seq, "x")));
+    g = ugf.getGrammar();
+    p = getParser(clazz, g);
+    gStart = g.getStartingRule();
+    gSeq = new BasicRule<String>("seq", g);
+
+    r = p.parse(getSourceForString("abcx"));
+    assertTrue(r.successful());
+    assertEquals(newParseTree(gStart, newParseTree(gSeq, "a", "b", "c"), "x"), r.getValue());
+    assertFalse(r.getRest().hasMore());
+
+    r = p.parse(getSourceForString("abcy"));
+    assertTrue(r.successful());
+    assertEquals(newParseTree(gStart, newParseTree(gSeq, "a", "b", "c"), "y"), r.getValue());
     assertFalse(r.getRest().hasMore());
   }
 
