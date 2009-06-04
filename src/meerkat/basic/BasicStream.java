@@ -79,4 +79,9 @@ public class BasicStream<T> implements Stream<T> {
     }
     return false;
   }
+
+  @Override
+  public String toString() {
+    return "<Stream: " + position + ">";
+  }
 }

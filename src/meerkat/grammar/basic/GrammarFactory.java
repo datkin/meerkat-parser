@@ -72,7 +72,7 @@ public class GrammarFactory<T> implements Grammar<T> {
   }
 
   public Sequence<T> seq(List<Expr<T>> exprs) { return new BasicSequence<T>(exprs); }
-  public Rule<T> seq(Rule<T> rule, List<Expr<T>> exprs) { return setRule(rule, seq(exprs)); }
+  public Rule<T> seq(Rule<T> rule, List<Expr<T>> exprs) { return setRule(rule, seq(exprs)); } // listToExpr(exprs)?
 
   public Choice<T> or(List<Expr<T>> exprs) { return new BasicChoice<T>(exprs); }
   public Rule<T> or(Rule<T> rule, List<Expr<T>> exprs) { return setRule(rule, or(exprs)); }
