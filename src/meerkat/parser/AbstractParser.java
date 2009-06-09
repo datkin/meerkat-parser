@@ -18,11 +18,11 @@ public abstract class AbstractParser<T> implements Parser<T> {
 
   @Override
   public Result<T> parse(Source<T> source) {
-    return parse(source.getStream(), grammar.getStartingRule());
+    return parse(grammar.getStartingRule(), source.getStream());
   }
 
   @Override
-  public Result<T> parse(Stream<T> stream, Rule<T> rule) {
+  public Result<T> parse(Rule<T> rule, Stream<T> stream) {
     Stream<T> original = engine.setStream(stream);
     ListResult<T> r = grammar.getExpr(rule).accept(engine);
     engine.setStream(original);

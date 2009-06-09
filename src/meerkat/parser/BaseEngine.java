@@ -43,7 +43,7 @@ class BaseEngine<T> implements Engine<T> {
     // Invariant assumption: even if parser relies on *this* engine
     // to do the parsing, we don't need to save the stream b/c the
     // parser will take care of saving/restoring "this.stream" if necessary
-    Result<T> result = parser.parse(this.stream, rule);
+    Result<T> result = parser.parse(rule, this.stream);
     if (result.successful()) {
       this.stream = result.getRest();
       return new ListResult<T>(result.getValue(), this.stream);

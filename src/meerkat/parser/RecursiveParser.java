@@ -22,7 +22,7 @@ public class RecursiveParser<T> extends AbstractParser<T> {
   // whatever stream is returned by the result will be the one
   // the parse engine continues parsing with
   @Override
-  public Result<T> parse(Stream<T> stream, Rule<T> rule) {
+  public Result<T> parse(Rule<T> rule, Stream<T> stream) {
     CacheEntry<T> entry = recall(stream, rule);
     if (entry == null) {
       CacheKey<T> key = new CacheKey<T>(rule, stream);
@@ -32,7 +32,7 @@ public class RecursiveParser<T> extends AbstractParser<T> {
       // Memoize the LR and evaluate the rule
       entry = new CacheEntry<T>(lr);
       cache.put(key, entry);
-      Result<T> result = super.parse(stream, rule);
+      Result<T> result = super.parse(rule, stream);
       // Pop LR from the stack
       this.topLR = this.topLR.next;
       // MISSING: update the memoized position?
@@ -57,7 +57,7 @@ public class RecursiveParser<T> extends AbstractParser<T> {
     LeftRecur<T> stack = this.topLR;
     while (!lr.head.equals(stack.head)) { // expect stack.head to be null, b/c it hasn't be setup yet
       stack.head = lr.head;
-      lr.head.involvedSet.add(stack.rule);
+      lr.head.addRule(stack.rule);
       stack = stack.next;
     }
     return lr;
@@ -78,8 +78,8 @@ public class RecursiveParser<T> extends AbstractParser<T> {
   private Result<T> growLR(Stream<T> stream, Rule<T> rule, CacheEntry<T> entry, Head<T> head) {
     this.heads.put(stream, head);
     while (true) {
-      head.evalSet = new HashSet<Rule<T>>(head.involvedSet);
-      Result<T> result = super.parse(stream, rule);
+      head.resetEvalSet();
+      Result<T> result = super.parse(rule, stream);
       if (!result.successful() || result.getRest().getPosition() <= entry.getResult().getRest().getPosition()) {
         this.heads.remove(stream);
         return entry.getResult();
@@ -97,12 +97,12 @@ public class RecursiveParser<T> extends AbstractParser<T> {
     if (head == null) {
       return entry;
     }
-    if (entry == null && !head.rule.equals(rule) && ! head.involvedSet.contains(rule)) {
-      return new CacheEntry<T>(new BasicResult<T>(null, null)); // MISSING: store the position
+    if (entry == null && !head.rule.equals(rule) && !head.hasRule(rule)) {
+      return new CacheEntry<T>(new BasicResult<T>(null, null));
     }
     if (head.evalSet.contains(rule)) {
       head.evalSet.remove(rule);
-      entry.result = super.parse(stream, rule);
+      entry.result = super.parse(rule, stream);
     }
     return entry;
   }
@@ -170,5 +170,22 @@ class Head<T> {
       return ((Head)obj).rule.equals(this.rule); // don't both comparing the sets?
     }
     return false;
+  }
+
+  public void addRule(Rule<T> rule) {
+    involvedSet.add(rule);
+  }
+
+  public void resetEvalSet() {
+    this.evalSet = new HashSet<Rule<T>>(this.involvedSet);
+  }
+  /*
+  public Set<Rule<T>> getRules() {
+    return this.involvedSet; // immutable copy of this?
+  }
+  */
+
+  public boolean hasRule(Rule<T> rule) {
+    return this.involvedSet.contains(rule);
   }
 }
