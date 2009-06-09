@@ -12,7 +12,7 @@ import meerkat.grammar.Rule;
 public class RecursiveParser<T> extends AbstractParser<T> {
   private final Map<CacheKey<T>, CacheEntry<T>> cache = new HashMap<CacheKey<T>, CacheEntry<T>>();
   private final Map<Stream<T>, Head<T>> heads = new HashMap<Stream<T>, Head<T>>();
-  private LeftRecur<T> topLR = null;
+  private Recursion<T> topRecursion = null;
 
   public RecursiveParser(Grammar<T> grammar) {
     super(grammar, new BaseEngineFactory<T>());
@@ -23,59 +23,40 @@ public class RecursiveParser<T> extends AbstractParser<T> {
   // the parse engine continues parsing with
   @Override
   public Result<T> parse(Rule<T> rule, Stream<T> stream) {
-    CacheEntry<T> entry = recall(stream, rule);
+    CacheEntry<T> entry = recall(rule, stream);
     if (entry == null) {
-      CacheKey<T> key = new CacheKey<T>(rule, stream);
-      // Create an LR and push it on the stack
-      LeftRecur<T> lr = new LeftRecur<T>(rule, this.topLR);
-      this.topLR = lr;
-      // Memoize the LR and evaluate the rule
-      entry = new CacheEntry<T>(lr);
-      cache.put(key, entry);
+      Recursion<T> recursion = this.topRecursion = new Recursion<T>(rule, this.topRecursion);
+      entry = new CacheEntry<T>(recursion);
+      cache.put(new CacheKey<T>(rule, stream), entry);
       Result<T> result = super.parse(rule, stream);
-      // Pop LR from the stack
-      this.topLR = this.topLR.next;
-      // MISSING: update the memoized position?
-      if (lr.head != null) {
-        lr.seed = result;
-        return answerLR(stream, rule, entry);
+      this.topRecursion = this.topRecursion.getNext();
+      if (recursion.getHead() == null) { // No left recursion found
+        return entry.setResult(result);
       } else {
-        entry.result = result;
-        return result;
+        recursion.setSeed(result); // only called once
+        return parseRecursive(rule, stream, entry);
       }
-    } else {
-      if (!entry.hasResult()) { // ie entry.hasLR()
-        return setupLR(rule, entry.getLR()).seed;
-      }
+    } else if (entry.hasRecursion()) {
+      // seed will always be a failure result here?
+      return entry.getRecursion().setup(rule, this.topRecursion).getSeed();
     }
     return entry.getResult();
   }
 
-  private LeftRecur<T> setupLR(Rule<T> rule, LeftRecur<T> lr) {
-    if (lr.head == null)
-      lr.head = new Head<T>(rule);
-    LeftRecur<T> stack = this.topLR;
-    while (!lr.head.equals(stack.head)) { // expect stack.head to be null, b/c it hasn't be setup yet
-      stack.head = lr.head;
-      lr.head.addRule(stack.rule);
-      stack = stack.next;
+  private Result<T> parseRecursive(Rule<T> rule, Stream<T> stream, CacheEntry<T> entry) {
+    Head<T> head = entry.getRecursion().getHead();
+    Result<T> seed = entry.getRecursion().getSeed();
+    if (!head.getRule().equals(rule)) {
+      return seed;
     }
-    return lr;
-  }
-
-  private Result<T> answerLR(Stream<T> stream, Rule<T> rule, CacheEntry<T> entry) {
-    Head<T> head = entry.getLR().head;
-    if (!head.rule.equals(rule)) {
-      return entry.getLR().seed;
-    }
-    entry.setResult(entry.getLR().seed);
+    entry.setResult(seed); // setting the result clears the recursion field!
     if (!entry.getResult().successful()) {
       return entry.getResult();
     }
-    return growLR(stream, rule, entry, head);
+    return growRecursion(rule, stream, entry, head);
   }
 
-  private Result<T> growLR(Stream<T> stream, Rule<T> rule, CacheEntry<T> entry, Head<T> head) {
+  private Result<T> growRecursion(Rule<T> rule, Stream<T> stream, CacheEntry<T> entry, Head<T> head) {
     this.heads.put(stream, head);
     while (true) {
       head.resetEvalSet();
@@ -88,54 +69,52 @@ public class RecursiveParser<T> extends AbstractParser<T> {
     }
   }
 
-  // TODO: make this take a cache key instead?
   // Note: this does *not* add anything to the cache (aka memo table)
-  private CacheEntry<T> recall(Stream<T> stream, Rule<T> rule) {
-    CacheKey<T> key = new CacheKey<T>(rule, stream);
-    CacheEntry<T> entry = cache.get(key);
+  private CacheEntry<T> recall(Rule<T> rule, Stream<T> stream) {
+    CacheEntry<T> entry = cache.get(new CacheKey<T>(rule, stream));
     Head<T> head = this.heads.get(stream);
-    if (head == null) {
+    // TODO: remove both these calls if I cannot think of a proper test case
+    if (head == null) { // No recursion for this entry, just give the cached result
       return entry;
     }
-    if (entry == null && !head.rule.equals(rule) && !head.hasRule(rule)) {
+    if (entry == null && !head.involvesRule(rule)) {
+      System.out.println("unexpected call!!!!!!!!!!");
+      // creation of failure results is taken care of by calls to super.parse
+      // is there any reason to do it here?
+      //return null;
       return new CacheEntry<T>(new BasicResult<T>(null, null));
     }
-    if (head.evalSet.contains(rule)) {
-      head.evalSet.remove(rule);
-      entry.result = super.parse(rule, stream);
+    if (head != null && head.canEval(rule)) {
+      head.evalRule(rule);
+      entry.setResult(super.parse(rule, stream));
     }
     return entry;
   }
 }
 
 class CacheEntry<T> {
-  LeftRecur<T> lr = null;
-  Result<T> result = null;
+  private Recursion<T> recursion = null;
+  private Result<T> result = null;
 
-  public CacheEntry(LeftRecur<T> lr) {
-    this.lr = lr;
+  public CacheEntry(Recursion<T> recursion) {
+    this.recursion = recursion;
   }
 
   public CacheEntry(Result<T> result) {
     this.result = result;
   }
 
-  public boolean hasLR() {
-    return this.lr != null;
+  public boolean hasRecursion() {
+    return this.recursion != null;
   }
 
-  // check this to determine if it's a check for LR or not
-  public boolean hasResult() {
-    return this.result != null;
+  public Result<T> setResult(Result<T> result) {
+    this.recursion = null;
+    return this.result = result;
   }
 
-  public void setResult(Result<T> result) {
-    this.lr = null;
-    this.result = result;
-  }
-
-  public LeftRecur<T> getLR() {
-    return this.lr;
+  public Recursion<T> getRecursion() {
+    return this.recursion;
   }
 
   public Result<T> getResult() {
@@ -143,22 +122,57 @@ class CacheEntry<T> {
   }
 }
 
-class LeftRecur<T> {
-  Result<T> seed = new BasicResult<T>(null, null);
-  Rule<T> rule;
-  Head<T> head = null;
-  LeftRecur<T> next;
+class Recursion<T> {
+  private Result<T> seed = new BasicResult<T>(null, null);
+  private final Rule<T> rule;
+  private Head<T> head = null;
+  private final Recursion<T> next;
 
-  public LeftRecur(Rule<T> rule, LeftRecur<T> next) {
+  public Recursion(Rule<T> rule, Recursion<T> next) {
     this.rule = rule;
     this.next = next;
+  }
+
+  public Head<T> getHead() {
+    return this.head;
+  }
+
+  public void setSeed(Result<T> seed) {
+    this.seed = seed;
+  }
+
+  public Result<T> getSeed() {
+    return this.seed;
+  }
+
+  public Recursion<T> getNext() {
+    return this.next;
+  }
+
+  /* Create a Head for this marker and walk up the stack of
+   * recursion markers associating each marker with this marker's
+   * head, until we reach this marker on the stack.
+   * TODO: Alternately could we do this setup each time the recursions are created?
+   * (or could we do some static analysis of the grammar to find recursions
+   * ahead of time and use that knowledge to optimize/amortize this process)
+   */
+  public Recursion<T> setup(Rule<T> rule, Recursion<T> stack) {
+    assert this.head == null;
+    this.head = new Head<T>(rule);
+    while (!this.head.equals(stack.getHead())) { // could also do this != stack
+      this.head.addRule(stack.rule);
+      assert stack.head == null;
+      stack.head = this.head;
+      stack = stack.getNext();
+    }
+    return this;
   }
 }
 
 class Head<T> {
-  Rule<T> rule;
-  Set<Rule<T>> involvedSet = new HashSet<Rule<T>>();
-  Set<Rule<T>> evalSet = new HashSet<Rule<T>>();
+  private Rule<T> rule;
+  private Set<Rule<T>> involvedSet = new HashSet<Rule<T>>();
+  private Set<Rule<T>> evalSet = new HashSet<Rule<T>>();
 
   public Head(Rule<T> rule) {
     this.rule = rule;
@@ -176,16 +190,24 @@ class Head<T> {
     involvedSet.add(rule);
   }
 
+  public Rule<T> getRule() {
+    return this.rule;
+  }
+
+  public boolean involvesRule(Rule<T> rule) {
+    return this.rule.equals(rule) || this.involvedSet.contains(rule);
+  }
+
   public void resetEvalSet() {
     this.evalSet = new HashSet<Rule<T>>(this.involvedSet);
   }
-  /*
-  public Set<Rule<T>> getRules() {
-    return this.involvedSet; // immutable copy of this?
-  }
-  */
 
-  public boolean hasRule(Rule<T> rule) {
-    return this.involvedSet.contains(rule);
+  public boolean canEval(Rule<T> rule) {
+    return this.evalSet.contains(rule);
+  }
+
+  // doesn't actually eval the rule, but marks it as evaled (by removing it from the set)
+  public void evalRule(Rule<T> rule) {
+    this.evalSet.remove(rule);
   }
 }
