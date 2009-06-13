@@ -141,7 +141,7 @@ public class TestRecursiveParser {
     UnsafeGrammarFactory<String> ugf = new UnsafeGrammarFactory<String>(String.class);
     Rule<String> expr = ugf.newRule("expr");
     Rule<String> x = ugf.seqRule("x", expr);
-    Rule<String> num = ugf.orRule("num", ugf.plus(ugf.or("1", "2", "3", "4", "5", "6", "7", "8", "9", "0")));
+    Rule<String> num = ugf.plusRule("num", ugf.or("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"));
     ugf.setRule(expr, ugf.or(ugf.seq(x, "-", num), num));
     ugf.setStartingRule(x);
     return ugf.getGrammar();

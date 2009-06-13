@@ -19,7 +19,7 @@ import meerkat.basic.BasicStream;
 
 public class ParserTester {
 
-  private static Grammar<String> grammar = getGrammar();
+  //private static Grammar<String> grammar = getGrammar();
 
   public static void testParser(Class<? extends Parser> parserClazz) {
     testSeq(parserClazz);
@@ -366,14 +366,22 @@ public class ParserTester {
     return getSource(strings);
   }
 
-  public static Grammar<String> getGrammar() {
+  public static Grammar<String> getSampleGrammar() {
     UnsafeGrammarFactory<String> gf = new UnsafeGrammarFactory<String>(String.class);
     Rule<String> additive = gf.newRule("Additive");
     Rule<String> multitive = gf.newRule("Multitive");
-    Rule<String> decimal = gf.orRule("Decimal", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9");
-    Rule<String> primary = gf.orRule("Primary", gf.seq("(", additive, ")"), decimal);
+    Rule<String> number = gf.plusRule("Number", gf.or("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"));
+    Rule<String> primary = gf.orRule("Primary", gf.seq("(", additive, ")"), number);
     gf.orRule("Multitive", gf.seq(primary, "*", multitive), primary);
     gf.setStartingRule(gf.orRule("Additive", gf.seq(multitive, "+", additive), multitive));
     return gf.getGrammar();
+  }
+
+  public static <T> Rule<T> getRule(Grammar<T> grammar, String name) {
+    for (Rule<T> rule : grammar.getRules()) {
+      if (rule.getName().equals(name))
+        return rule;
+    }
+    return null;
   }
 }
