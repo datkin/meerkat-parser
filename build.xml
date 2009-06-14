@@ -31,7 +31,7 @@
   </target>
 
   <target name="compile" depends="init" description="Compile Java sources">
-    <javac srcdir="${src}" destdir="${classes}" debug="true">
+    <javac srcdir="${src}" destdir="${classes}" debug="true" classpathref="lib.classpath">
       <compilerarg value="-Xlint:unchecked"/>
     </javac>
   </target>
@@ -42,6 +42,7 @@
       <classpath>
         <pathelement path="${classes}"/>
         <pathelement location="${junit}"/>
+        <path refid="lib.classpath"/>
       </classpath>
     </javac>
   </target>
@@ -56,7 +57,7 @@
         <pathelement path="${classes}"/>
         <pathelement path="${test-classes}"/>
         <pathelement path="${junit}"/>
-        <!-- <path refid="libpath"/> -->
+        <path refid="lib.classpath"/>
       </classpath>
 
       <batchtest>
