@@ -39,10 +39,9 @@ public class GrammarCompilerTester {
 
     mv = cv.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
     mv.visitCode();
-    int maxLocal = new GrammarCompiler<String>(grammar).writeToStack(mv, 0, terminals);
+    int maxLocal = new GrammarCompiler<String>(grammar).writeToStack(new MethodWriter(mv), terminals);
     mv.visitFieldInsn(PUTSTATIC, name, "grammar", grammarType);
     mv.visitInsn(RETURN);
-    //mv.visitMaxs(10, 1);
     mv.visitMaxs(0, 0);
     mv.visitEnd();
 
@@ -51,7 +50,6 @@ public class GrammarCompilerTester {
     mv.visitVarInsn(ALOAD, 0);
     mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V");
     mv.visitInsn(RETURN);
-    //mv.visitMaxs(1, 1);
     mv.visitMaxs(0, 0);
     mv.visitEnd();
 

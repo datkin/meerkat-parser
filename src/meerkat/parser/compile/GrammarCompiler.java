@@ -4,8 +4,6 @@ import java.util.Map;
 import java.util.List;
 import java.util.LinkedList;
 
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
 import static org.objectweb.asm.Opcodes.*;
 
@@ -13,12 +11,11 @@ import meerkat.grammar.*;
 import meerkat.grammar.basic.*;
 import meerkat.grammar.basic.GrammarFactory;
 
-/* TODO: the "<type>CtorSig" variables are really constructor descriptors, not signatures
- * (signatures are for generics, at least in ASM */
-
 /* This class visits a grammar, and emits the bytecode to create
  * a static copy of this grammar at class initialization time */
 public class GrammarCompiler<T> {
+  private final static Type V = Type.VOID_TYPE; // TODO: move this to a constants inteface?
+
   private final Grammar<T> grammar;
 
   public GrammarCompiler(Grammar<T> grammar) {
@@ -29,54 +26,51 @@ public class GrammarCompiler<T> {
 
   // takes the maximum used local variable upon entry
   // and returns the number of local variables added
-  public int writeToStack(MethodVisitor mv, int max, Map<T, StackWriter> terminals) {
+  public int writeToStack(MethodWriter mw, Map<T, StackWriter> terminals) {
     // Create a local array of rules and store them
     List<Rule<T>> rules = new LinkedList<Rule<T>>();
     for (Rule<T> rule : grammar.getRules())
       rules.add(rule);
 
-    String ruleType = Type.getInternalName(Rule.class);
-    mv.visitLdcInsn(rules.size());
-    mv.visitTypeInsn(ANEWARRAY, ruleType);
-    mv.visitVarInsn(ASTORE, max); // store the new rules array in local variable |max|
+    int rulesLocal = mw.getNextLocal();
+    mw.visitLdcInsn(rules.size());
+    mw.visitTypeInsn(ANEWARRAY, Rule.class);
+    mw.visitVarInsn(ASTORE, rulesLocal);
 
-    String grammarFactory = Type.getInternalName(GrammarFactory.class);
-    mv.visitTypeInsn(NEW, grammarFactory);
-    mv.visitInsn(DUP);
-    mv.visitMethodInsn(INVOKESPECIAL, grammarFactory, "<init>", "()V");
+    mw.visitTypeInsn(NEW, GrammarFactory.class);
+    mw.visitInsn(DUP);
+    mw.visitMethodInsn(INVOKESPECIAL, GrammarFactory.class, "<init>", V);
 
-    String newRuleType = Type.getMethodDescriptor(Type.getType(Rule.class), new Type[] { Type.getType(String.class) });
     for (int i = 0; i < rules.size(); i++) {
-      mv.visitInsn(DUP); // dupe the grammar factory
-      mv.visitVarInsn(ALOAD, max);
-      mv.visitLdcInsn(i);
-      mv.visitInsn(DUP2_X1); // copy the array and index below the factory
-      mv.visitInsn(POP2);
-      mv.visitLdcInsn(rules.get(i).getName());
-      mv.visitMethodInsn(INVOKEVIRTUAL, grammarFactory, "newRule", newRuleType);
-      mv.visitInsn(AASTORE);
+      mw.visitInsn(DUP); // dupe the grammar factory
+      mw.visitVarInsn(ALOAD, rulesLocal);
+      mw.visitLdcInsn(i);
+      mw.visitInsn(DUP2_X1); // copy the array and index below the factory
+      mw.visitInsn(POP2);
+      mw.visitLdcInsn(rules.get(i).getName());
+      mw.visitMethodInsn(INVOKEVIRTUAL, GrammarFactory.class, "newRule", Rule.class, String.class);
+      mw.visitInsn(AASTORE);
     }
 
-    String setRuleType = Type.getMethodDescriptor(Type.getType(Rule.class), new Type[] { Type.getType(Rule.class), Type.getType(Expr.class) });
-    GrammarEmitter<T> ge = new GrammarEmitter<T>(mv, max, terminals, rules);
+    GrammarEmitter<T> ge = new GrammarEmitter<T>(mw, rulesLocal, terminals, rules);
     for (Rule<T> r : rules) {
-      mv.visitInsn(DUP);
-      mv.visitVarInsn(ALOAD, max);
-      mv.visitLdcInsn(rules.indexOf(r));
-      mv.visitInsn(AALOAD);
+      mw.visitInsn(DUP);
+      mw.visitVarInsn(ALOAD, rulesLocal);
+      mw.visitLdcInsn(rules.indexOf(r));
+      mw.visitInsn(AALOAD);
       grammar.getExpr(r).accept(ge);
-      mv.visitMethodInsn(INVOKEVIRTUAL, grammarFactory, "setRule", setRuleType);
+      mw.visitMethodInsn(INVOKEVIRTUAL, GrammarFactory.class, "setRule", Rule.class, Rule.class, Expr.class);
       if (r.equals(grammar.getStartingRule())) {
-        mv.visitInsn(SWAP);
-        mv.visitInsn(DUP_X1);
-        mv.visitInsn(SWAP);
-        mv.visitMethodInsn(INVOKEVIRTUAL, grammarFactory, "setStartingRule", Type.getMethodDescriptor(Type.VOID_TYPE, new Type[] { Type.getType(Rule.class) }));
+        mw.visitInsn(SWAP);
+        mw.visitInsn(DUP_X1);
+        mw.visitInsn(SWAP);
+        mw.visitMethodInsn(INVOKEVIRTUAL, GrammarFactory.class, "setStartingRule", V, Rule.class);
       } else {
-        mv.visitInsn(POP);
+        mw.visitInsn(POP);
       }
     }
 
-    mv.visitMethodInsn(INVOKEVIRTUAL, grammarFactory, "getGrammar", Type.getMethodDescriptor(Type.getType(Grammar.class), new Type[] {}));
+    mw.visitMethodInsn(INVOKEVIRTUAL, GrammarFactory.class, "getGrammar", Grammar.class);
 
     return 1;
   }
@@ -85,160 +79,139 @@ public class GrammarCompiler<T> {
 
 /* Leave an Expr on the stack */
 class GrammarEmitter<T> implements GrammarVisitor<T, Void> {
-  private final static String exprCtorSig = Type.getMethodDescriptor(Type.VOID_TYPE, new Type[] { Type.getType(Expr.class) });
+  private final static Type V = Type.VOID_TYPE;
 
-  private final MethodVisitor mv;
-  private final int rulesVar;
+  private final MethodWriter mw;
+  private final int rulesLocal;
   private final Map<T, StackWriter> terminals;
   private final List<Rule<T>> rules;
 
-  public GrammarEmitter(MethodVisitor mv, int rulesVar, Map<T, StackWriter> terminals, List<Rule<T>> rules) {
-    if (mv == null || terminals == null || rules == null)
+  public GrammarEmitter(MethodWriter mw, int rulesLocal, Map<T, StackWriter> terminals, List<Rule<T>> rules) {
+    if (mw == null || terminals == null || rules == null)
       throw new IllegalArgumentException();
-    this.mv = mv;
-    this.rulesVar = rulesVar;
+    this.mw = mw;
+    this.rulesLocal = rulesLocal;
     this.terminals = terminals;
     this.rules = rules;
   }
 
   @Override
   public Void visit(Rule<T> rule) {
-    mv.visitVarInsn(ALOAD, rulesVar);
-    mv.visitLdcInsn(rules.indexOf(rule));
-    mv.visitInsn(AALOAD);
+    mw.visitVarInsn(ALOAD, rulesLocal);
+    mw.visitLdcInsn(rules.indexOf(rule));
+    mw.visitInsn(AALOAD);
     return null;
   }
 
   @Override
   public Void visit(Sequence<T> sequence) {
-    String seqType = Type.getInternalName(BasicSequence.class);
     // 0. Create a seq object
-    mv.visitTypeInsn(NEW, seqType);
-    mv.visitInsn(DUP);
+    mw.visitTypeInsn(NEW, BasicSequence.class);
+    mw.visitInsn(DUP);
 
-    String llType = Type.getInternalName(LinkedList.class);
     // 1. create a linked list
-    mv.visitTypeInsn(NEW, llType);
-    mv.visitInsn(DUP);
-    mv.visitMethodInsn(INVOKESPECIAL, llType, "<init>", "()V");
+    mw.visitTypeInsn(NEW, LinkedList.class);
+    mw.visitInsn(DUP);
+    mw.visitMethodInsn(INVOKESPECIAL, LinkedList.class, "<init>", V);
 
-    String llAddSig = Type.getMethodDescriptor(Type.BOOLEAN_TYPE, new Type[] { Type.getType(Object.class) });
     // 2. create each sub expr and add it to the list
     for (Expr<T> expr : sequence.getExprs()) {
-      mv.visitInsn(DUP);
+      mw.visitInsn(DUP);
       expr.accept(this); // e.g. push the expr to the stack
-      mv.visitMethodInsn(INVOKEVIRTUAL, llType, "add", llAddSig);
-      mv.visitInsn(POP);
+      mw.visitMethodInsn(INVOKEVIRTUAL, LinkedList.class, "add", Type.BOOLEAN_TYPE, Type.getType(Object.class));
+      mw.visitInsn(POP);
     }
 
-    String seqCtorSig = Type.getMethodDescriptor(Type.VOID_TYPE, new Type[] { Type.getType(List.class) });
     // 3. pass the linked list to a seq constructor
-    mv.visitMethodInsn(INVOKESPECIAL, seqType, "<init>", seqCtorSig);
+    mw.visitMethodInsn(INVOKESPECIAL, BasicSequence.class, "<init>", V, List.class);
 
     return null;
   }
 
   @Override
   public Void visit(Choice<T> choice) {
-    String orType = Type.getInternalName(BasicChoice.class);
     // 0. Create a choice object
-    mv.visitTypeInsn(NEW, orType);
-    mv.visitInsn(DUP);
+    mw.visitTypeInsn(NEW, BasicChoice.class);
+    mw.visitInsn(DUP);
 
-    String llType = Type.getInternalName(LinkedList.class);
     // 1. create a linked list
-    mv.visitTypeInsn(NEW, llType);
-    mv.visitInsn(DUP);
-    mv.visitMethodInsn(INVOKESPECIAL, llType, "<init>", "()V");
+    mw.visitTypeInsn(NEW, LinkedList.class);
+    mw.visitInsn(DUP);
+    mw.visitMethodInsn(INVOKESPECIAL, LinkedList.class, "<init>", V);
 
-    String llAddSig = Type.getMethodDescriptor(Type.BOOLEAN_TYPE, new Type[] { Type.getType(Object.class) });
     // 2. create each sub expr and add it to the list
     for (Expr<T> expr : choice.getExprs()) {
-      mv.visitInsn(DUP);
+      mw.visitInsn(DUP);
       expr.accept(this); // e.g. push the expr to the stack
-      mv.visitMethodInsn(INVOKEVIRTUAL, llType, "add", llAddSig);
-      mv.visitInsn(POP);
+      mw.visitMethodInsn(INVOKEVIRTUAL, LinkedList.class, "add", Type.BOOLEAN_TYPE, Object.class);
+      mw.visitInsn(POP);
     }
 
-    String orCtorSig = Type.getMethodDescriptor(Type.VOID_TYPE, new Type[] { Type.getType(List.class) });
     // 3. pass the linked list to a choice constructor
-    mv.visitMethodInsn(INVOKESPECIAL, orType, "<init>", orCtorSig);
+    mw.visitMethodInsn(INVOKESPECIAL, BasicChoice.class, "<init>", V, List.class);
     return null;
   }
 
   @Override
   public Void visit(Optional<T> optional) {
-    String optionalType = Type.getInternalName(BasicOptional.class);
-    mv.visitTypeInsn(NEW, optionalType);
-    mv.visitInsn(DUP);
+    mw.visitTypeInsn(NEW, BasicOptional.class);
+    mw.visitInsn(DUP);
     optional.getExpr().accept(this);
-    mv.visitMethodInsn(INVOKESPECIAL, optionalType, "<init>", exprCtorSig);
+    mw.visitMethodInsn(INVOKESPECIAL, BasicOptional.class, "<init>", V, Expr.class);
     return null;
   }
 
   @Override
   public Void visit(And<T> and) {
-    String andType = Type.getInternalName(BasicAnd.class);
-    mv.visitTypeInsn(NEW, andType);
-    mv.visitInsn(DUP);
+    mw.visitTypeInsn(NEW, BasicAnd.class);
+    mw.visitInsn(DUP);
     and.getExpr().accept(this);
-    mv.visitMethodInsn(INVOKESPECIAL, andType, "<init>", exprCtorSig);
+    mw.visitMethodInsn(INVOKESPECIAL, BasicAnd.class, "<init>", V, Expr.class);
     return null;
   }
 
   @Override
   public Void visit(Not<T> not) {
-    String notType = Type.getInternalName(BasicNot.class);
-    mv.visitTypeInsn(NEW, notType);
-    mv.visitInsn(DUP);
+    mw.visitTypeInsn(NEW, BasicNot.class);
+    mw.visitInsn(DUP);
     not.getExpr().accept(this);
-    mv.visitMethodInsn(INVOKESPECIAL, notType, "<init>", exprCtorSig);
+    mw.visitMethodInsn(INVOKESPECIAL, BasicNot.class, "<init>", V, Expr.class);
     return null;
   }
 
   @Override
   public Void visit(ZeroOrMore<T> zom) {
-    String zomType = Type.getInternalName(BasicZeroOrMore.class);
-    mv.visitTypeInsn(NEW, zomType);
-    mv.visitInsn(DUP);
+    mw.visitTypeInsn(NEW, BasicZeroOrMore.class);
+    mw.visitInsn(DUP);
     zom.getExpr().accept(this);
-    mv.visitMethodInsn(INVOKESPECIAL, zomType, "<init>", exprCtorSig);
+    mw.visitMethodInsn(INVOKESPECIAL, BasicZeroOrMore.class, "<init>", V, Expr.class);
     return null;
   }
 
   @Override
   public Void visit(OneOrMore<T> oom) {
-    String oomType = Type.getInternalName(BasicOneOrMore.class);
-    mv.visitTypeInsn(NEW, oomType);
-    mv.visitInsn(DUP);
+    mw.visitTypeInsn(NEW, BasicOneOrMore.class);
+    mw.visitInsn(DUP);
     oom.getExpr().accept(this);
-    mv.visitMethodInsn(INVOKESPECIAL, oomType, "<init>", exprCtorSig);
+    mw.visitMethodInsn(INVOKESPECIAL, BasicOneOrMore.class, "<init>", V, Expr.class);
     return null;
   }
 
   @Override
   public Void visit(T t) {
-    String termType = Type.getInternalName(BasicTerminal.class);
-    mv.visitTypeInsn(NEW, termType);
-    mv.visitInsn(DUP);
-    terminals.get(t).writeToStack(mv);
-
-    String termCtorSig = Type.getMethodDescriptor(Type.VOID_TYPE, new Type[] { Type.getType(Object.class) });
-    mv.visitMethodInsn(INVOKESPECIAL, termType, "<init>", termCtorSig);
-
+    mw.visitTypeInsn(NEW, BasicTerminal.class);
+    mw.visitInsn(DUP);
+    terminals.get(t).writeToStack(mw);
+    mw.visitMethodInsn(INVOKESPECIAL, BasicTerminal.class, "<init>", V, Object.class);
     return null;
   }
 
   @Override
   public Void visit(Class<? extends T> clazz) {
-    String termClassType = Type.getInternalName(BasicTerminalClass.class);
-    mv.visitTypeInsn(NEW, termClassType);
-    mv.visitInsn(DUP);
-    mv.visitLdcInsn(Type.getType(clazz));
-
-    String termClassCtorSig = Type.getMethodDescriptor(Type.VOID_TYPE, new Type[] { Type.getType(Class.class) });
-    mv.visitMethodInsn(INVOKESPECIAL, termClassType, "<init>", termClassCtorSig);
-
+    mw.visitTypeInsn(NEW, BasicTerminalClass.class);
+    mw.visitInsn(DUP);
+    mw.visitLdcInsn(Type.getType(clazz));
+    mw.visitMethodInsn(INVOKESPECIAL, BasicTerminalClass.class, "<init>", V, Class.class);
     return null;
   }
 }
