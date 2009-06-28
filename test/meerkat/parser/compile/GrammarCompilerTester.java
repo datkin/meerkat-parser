@@ -19,6 +19,8 @@ import meerkat.grammar.util.TerminalCollector;
 public class GrammarCompilerTester {
 
   public static byte[] getGrammarClass(Grammar<String> grammar, String name) {
+    return new BasicParserCompiler().writeClass(name, grammar, new StringCompiler(), String.class);
+    /*
     Map<String, StackWriter> terminals = new HashMap<String, StackWriter>();
     Set<String> termSet = grammar.getStartingRule().accept(new TerminalCollector<String>(grammar));
     for (String s : termSet) {
@@ -64,5 +66,6 @@ public class GrammarCompilerTester {
     cv.visitEnd();
 
     return cw.toByteArray();
+    */
   }
 }

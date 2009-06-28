@@ -13,20 +13,21 @@ import meerkat.grammar.basic.GrammarFactory;
 
 /* This class visits a grammar, and emits the bytecode to create
  * a static copy of this grammar at class initialization time */
-public class GrammarCompiler<T> {
+public class GrammarCompiler<T> implements ObjectCompiler<Grammar<T>> {
   private final static Type V = Type.VOID_TYPE; // TODO: move this to a constants inteface?
 
-  private final Grammar<T> grammar;
+  private final ObjectCompiler<T> terminalCompiler;
 
-  public GrammarCompiler(Grammar<T> grammar) {
-    if (grammar == null)
+  public GrammarCompiler(ObjectCompiler<T> terminalCompiler) {
+    if (terminalCompiler == null)
       throw new IllegalArgumentException();
-    this.grammar = grammar;
+    this.terminalCompiler = terminalCompiler;
   }
 
   // takes the maximum used local variable upon entry
   // and returns the number of local variables added
-  public int writeToStack(MethodWriter mw, Map<T, StackWriter> terminals) {
+  @Override
+  public void writeToStack(Grammar<T> grammar, MethodWriter mw) {
     // Create a local array of rules and store them
     List<Rule<T>> rules = new LinkedList<Rule<T>>();
     for (Rule<T> rule : grammar.getRules())
@@ -46,13 +47,13 @@ public class GrammarCompiler<T> {
       mw.visitVarInsn(ALOAD, rulesLocal);
       mw.visitLdcInsn(i);
       mw.visitInsn(DUP2_X1); // copy the array and index below the factory
-      mw.visitInsn(POP2);
+      mw.visitInsn(POP2); // pop the copies of the array and index on the top
       mw.visitLdcInsn(rules.get(i).getName());
       mw.visitMethodInsn(INVOKEVIRTUAL, GrammarFactory.class, "newRule", Rule.class, String.class);
       mw.visitInsn(AASTORE);
     }
 
-    GrammarEmitter<T> ge = new GrammarEmitter<T>(mw, rulesLocal, terminals, rules);
+    GrammarEmitter<T> ge = new GrammarEmitter<T>(mw, rulesLocal, terminalCompiler, rules);
     for (Rule<T> r : rules) {
       mw.visitInsn(DUP);
       mw.visitVarInsn(ALOAD, rulesLocal);
@@ -71,8 +72,6 @@ public class GrammarCompiler<T> {
     }
 
     mw.visitMethodInsn(INVOKEVIRTUAL, GrammarFactory.class, "getGrammar", Grammar.class);
-
-    return 1;
   }
 
 }
@@ -83,15 +82,15 @@ class GrammarEmitter<T> implements GrammarVisitor<T, Void> {
 
   private final MethodWriter mw;
   private final int rulesLocal;
-  private final Map<T, StackWriter> terminals;
+  private final ObjectCompiler<T> terminalCompiler;
   private final List<Rule<T>> rules;
 
-  public GrammarEmitter(MethodWriter mw, int rulesLocal, Map<T, StackWriter> terminals, List<Rule<T>> rules) {
-    if (mw == null || terminals == null || rules == null)
+  public GrammarEmitter(MethodWriter mw, int rulesLocal, ObjectCompiler<T> terminalCompiler, List<Rule<T>> rules) {
+    if (mw == null || terminalCompiler == null || rules == null)
       throw new IllegalArgumentException();
     this.mw = mw;
     this.rulesLocal = rulesLocal;
-    this.terminals = terminals;
+    this.terminalCompiler = terminalCompiler;
     this.rules = rules;
   }
 
@@ -201,7 +200,7 @@ class GrammarEmitter<T> implements GrammarVisitor<T, Void> {
   public Void visit(T t) {
     mw.visitTypeInsn(NEW, BasicTerminal.class);
     mw.visitInsn(DUP);
-    terminals.get(t).writeToStack(mw);
+    terminalCompiler.writeToStack(t, mw);
     mw.visitMethodInsn(INVOKESPECIAL, BasicTerminal.class, "<init>", V, Object.class);
     return null;
   }

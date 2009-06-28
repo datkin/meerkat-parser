@@ -11,6 +11,7 @@ import meerkat.parser.ParserTester;
 import meerkat.grammar.Grammar;
 import meerkat.grammar.Rule;
 import meerkat.grammar.basic.UnsafeGrammarFactory;
+import meerkat.parser.Parser;
 
 public class TestGrammarCompiler {
 
@@ -20,11 +21,14 @@ public class TestGrammarCompiler {
     final Grammar<String> expected = ParserTester.getSampleGrammar();
     byte [] bytes = GrammarCompilerTester.getGrammarClass(expected, name.replace('.', '/'));
 
-    Class<?> clazz = new BytecodeClassLoader().loadClass(bytes); //cl.loadClass(name);
-    Object o = clazz.newInstance();
+    Class<? extends Parser> clazz = new BytecodeClassLoader().loadClass(bytes, Parser.class);
+    Parser p = clazz.newInstance();
 
+    System.out.println(p.getGrammar());
+    /*
     Method getGrammarMethod = clazz.getMethod("getGrammar");
-    Object grammar = getGrammarMethod.invoke(null);
+    Object grammar = getGrammarMethod.invoke(o);
     System.out.println(grammar);
+    */
   }
 }
