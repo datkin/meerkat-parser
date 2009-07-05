@@ -42,8 +42,8 @@ public class BasicRule<T> implements Rule<T> {
       return false;
     BasicRule br = (BasicRule)obj;
     return
-      br.getName().equals(this.getName()) &&
-      br.getGrammar().equals(this.getGrammar());
+      br.getName().equals(this.getName());
+    // TODO: check grammar equality here when proper grammar equality checking is implemented?
   }
 
   @Override
