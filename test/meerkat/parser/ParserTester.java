@@ -17,6 +17,9 @@ import meerkat.Stream;
 import meerkat.basic.ListSource;
 import meerkat.basic.BasicStream;
 
+import meerkat.parser.basic.BasicParseLeaf;
+import meerkat.parser.basic.BasicParseTree;
+
 public class ParserTester {
 
   //private static Grammar<String> grammar = getGrammar();

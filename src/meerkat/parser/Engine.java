@@ -4,7 +4,8 @@ import java.util.List;
 import java.util.LinkedList;
 
 import meerkat.Stream;
-import meerkat.grammar.*;
+import meerkat.grammar.GrammarVisitor;
+import meerkat.parser.basic.BasicParseLeaf;
 
 interface Engine<T> extends GrammarVisitor<T, ListResult<T>> {
   public Stream<T> getStream();

@@ -8,6 +8,7 @@ import java.util.HashSet;
 import meerkat.Stream;
 import meerkat.grammar.Grammar;
 import meerkat.grammar.Rule;
+import meerkat.parser.basic.BasicResult;
 
 public class RecursiveParser<T> extends AbstractParser<T> {
   private final Map<CacheKey<T>, CacheEntry<T>> cache = new HashMap<CacheKey<T>, CacheEntry<T>>();

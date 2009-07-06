@@ -4,6 +4,8 @@ import meerkat.Stream;
 import meerkat.Source;
 import meerkat.grammar.Grammar;
 import meerkat.grammar.Rule;
+import meerkat.parser.basic.BasicParseTree;
+import meerkat.parser.basic.BasicResult;
 
 public abstract class AbstractParser<T> implements Parser<T> {
   private final Grammar<T> grammar;
