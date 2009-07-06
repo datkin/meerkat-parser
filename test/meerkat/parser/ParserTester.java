@@ -22,30 +22,29 @@ import meerkat.parser.basic.BasicParseTree;
 
 public class ParserTester {
 
-  //private static Grammar<String> grammar = getGrammar();
-
-  public static void testParser(Class<? extends Parser> parserClazz) {
-    testSeq(parserClazz);
-    testChoice(parserClazz);
-    testOptional(parserClazz);
-    testAnd(parserClazz);
-    testNot(parserClazz);
-    testOneOrMore(parserClazz);
-    testZeroOrMore(parserClazz);
-    testClass(parserClazz);
-    testAnBnCn(parserClazz);
+  public static void testParser(ParserFactory parserFactory) {
+    testSeq(parserFactory);
+    testChoice(parserFactory);
+    testOptional(parserFactory);
+    testAnd(parserFactory);
+    testNot(parserFactory);
+    testOneOrMore(parserFactory);
+    testZeroOrMore(parserFactory);
+    testClass(parserFactory);
+    testAnBnCn(parserFactory);
   }
 
-  private static void testSeq(Class<? extends Parser> clazz) {
+  private static void testSeq(ParserFactory parserFactory) {
     UnsafeGrammarFactory<String> ugf = new UnsafeGrammarFactory<String>(String.class);
     ugf.setStartingRule(ugf.seqRule("start", "a", "b", "c"));
     Grammar<String> g = ugf.getGrammar();
-    Parser<String> p = getParser(clazz, g);
+    Parser<String> p = parserFactory.newParser(g, String.class);
 
     Result<String> r;
 
     r = p.parse(getSourceForString("abc"));
     ParseNode<String> expected = newParseTree(g.getStartingRule(), "a", "b", "c");
+
     assertTrue(r.successful());
     assertEquals(expected, r.getValue());
     assertFalse(r.getRest().hasMore());
@@ -59,11 +58,11 @@ public class ParserTester {
     assertEquals(getSourceForString("abcd").getStream().getRest().getRest().getRest(), r.getRest());
   }
 
-  private static void testChoice(Class<? extends Parser> clazz) {
+  private static void testChoice(ParserFactory parserFactory) {
     UnsafeGrammarFactory<String> ugf = new UnsafeGrammarFactory<String>(String.class);
     ugf.setStartingRule(ugf.orRule("start", ugf.seq("a", "b", "c"), ugf.seq("a", "b")));
     Grammar<String> g = ugf.getGrammar();
-    Parser<String> p = getParser(clazz, g);
+    Parser<String> p = parserFactory.newParser(g, String.class);
 
     Result<String> r;
 
@@ -80,7 +79,7 @@ public class ParserTester {
     // change the order
     ugf.setStartingRule(ugf.orRule("newStart", ugf.seq("a", "b"), ugf.seq("a", "b", "c")));
     g = ugf.getGrammar();
-    p = getParser(clazz, g);
+    p = parserFactory.newParser(g, String.class);
 
     r = p.parse(getSourceForString("ab"));
     assertTrue(r.successful());
@@ -93,10 +92,10 @@ public class ParserTester {
     assertEquals(getSourceForString("abc").getStream().getRest().getRest(), r.getRest());
   }
 
-  private static void testOptional(Class<? extends Parser> clazz) {
+  private static void testOptional(ParserFactory parserFactory) {
     UnsafeGrammarFactory<String> ugf = new UnsafeGrammarFactory<String>(String.class);
     ugf.setStartingRule(ugf.optRule("start", "x"));
-    Parser<String> p = getParser(clazz, ugf.getGrammar());
+    Parser<String> p = parserFactory.newParser(ugf.getGrammar(), String.class);
 
     Result<String> r;
 
@@ -121,10 +120,10 @@ public class ParserTester {
     assertEquals(getSourceForString("xa").getStream().getRest(), r.getRest());
   }
 
-  private static void testAnd(Class<? extends Parser> clazz) {
+  private static void testAnd(ParserFactory parserFactory) {
     UnsafeGrammarFactory<String> ugf = new UnsafeGrammarFactory<String>(String.class);
     ugf.setStartingRule(ugf.andRule("start", "x"));
-    Parser<String> p = getParser(clazz, ugf.getGrammar());
+    Parser<String> p = parserFactory.newParser(ugf.getGrammar(), String.class);
 
     Result<String> r;
 
@@ -137,10 +136,10 @@ public class ParserTester {
     assertEquals(getSourceForString("x").getStream(), r.getRest());
   }
 
-  private static void testNot(Class<? extends Parser> clazz) {
+  private static void testNot(ParserFactory parserFactory) {
     UnsafeGrammarFactory<String> ugf = new UnsafeGrammarFactory<String>(String.class);
     ugf.setStartingRule(ugf.notRule("start", "x"));
-    Parser<String> p = getParser(clazz, ugf.getGrammar());
+    Parser<String> p = parserFactory.newParser(ugf.getGrammar(), String.class);
 
     Result<String> r;
 
@@ -153,10 +152,10 @@ public class ParserTester {
     assertEquals(getSourceForString("a").getStream(), r.getRest());
   }
 
-  private static void testOneOrMore(Class<? extends Parser> clazz) {
+  private static void testOneOrMore(ParserFactory parserFactory) {
     UnsafeGrammarFactory<String> ugf = new UnsafeGrammarFactory<String>(String.class);
     ugf.setStartingRule(ugf.plusRule("start", "x"));
-    Parser<String> p = getParser(clazz, ugf.getGrammar());
+    Parser<String> p = parserFactory.newParser(ugf.getGrammar(), String.class);
 
     Result<String> r;
 
@@ -182,10 +181,10 @@ public class ParserTester {
     assertEquals(getSourceForString("xxax").getStream().getRest().getRest(), r.getRest());
   }
 
-  private static void testZeroOrMore(Class<? extends Parser> clazz) {
+  private static void testZeroOrMore(ParserFactory parserFactory) {
     UnsafeGrammarFactory<String> ugf = new UnsafeGrammarFactory<String>(String.class);
     ugf.setStartingRule(ugf.starRule("start", "x"));
-    Parser<String> p = getParser(clazz, ugf.getGrammar());
+    Parser<String> p = parserFactory.newParser(ugf.getGrammar(), String.class);
 
     Result<String> r;
 
@@ -210,10 +209,10 @@ public class ParserTester {
     assertFalse(r.getRest().hasMore());
   }
 
-  private static void testClass(Class<? extends Parser> clazz) {
+  private static void testClass(ParserFactory parserFactory) {
     UnsafeGrammarFactory<String> ugf = new UnsafeGrammarFactory<String>(String.class);
     ugf.setStartingRule(ugf.seqRule("start", String.class));
-    Parser<String> p = getParser(clazz, ugf.getGrammar());
+    Parser<String> p = parserFactory.newParser(ugf.getGrammar(), String.class);
 
     Result<String> r;
 
@@ -231,7 +230,7 @@ public class ParserTester {
     assertEquals(getSourceForString("ab").getStream().getRest(), r.getRest());
   }
 
-  private static void testAnBnCn(Class<? extends Parser> clazz) {
+  private static void testAnBnCn(ParserFactory parserFactory) {
     UnsafeGrammarFactory<String> ugf = new UnsafeGrammarFactory<String>(String.class);
     Rule<String> A = ugf.newRule("A");
     Rule<String> B = ugf.newRule("B");
@@ -248,7 +247,7 @@ public class ParserTester {
       else if (r.getName().equals("B"))
         gB = r;
     }
-    Parser<String> p = getParser(clazz, g);
+    Parser<String> p = parserFactory.newParser(g, String.class);
 
     Result<String> r;
 
@@ -282,14 +281,22 @@ public class ParserTester {
 
     r = p.parse(getSourceForString("aabbcca"));
     assertFalse(r.successful());
+
+    /*
+    Source<String> source = getSourceForString("aaabbbccc");
+    long startTime = System.nanoTime();
+    r = p.parse(source);
+    long time = System.nanoTime() - startTime;
+    System.out.println("Processing time: " + time + " ns");
+    */
   }
 
-  public static void testCaching(Class<? extends Parser> clazz) {
+  public static void testCaching(ParserFactory parserFactory) {
     UnsafeGrammarFactory<String> ugf = new UnsafeGrammarFactory<String>(String.class);
     Rule<String> seq = ugf.seqRule("seq", "a", "b", "c");
     ugf.setStartingRule(ugf.orRule("start", ugf.seq(seq, "x"), seq));
     Grammar<String> g = ugf.getGrammar();
-    Parser<String> p = getParser(clazz, g);
+    Parser<String> p = parserFactory.newParser(g, String.class);
     Rule<String> gStart = g.getStartingRule();
     Rule<String> gSeq = new BasicRule<String>("seq", g);
 
@@ -317,7 +324,7 @@ public class ParserTester {
 
     ugf.setStartingRule(ugf.orRule("start2", ugf.seq(seq, "y"), ugf.seq(seq, "x")));
     g = ugf.getGrammar();
-    p = getParser(clazz, g);
+    p = parserFactory.newParser(g, String.class);
     gStart = g.getStartingRule();
     gSeq = new BasicRule<String>("seq", g);
 
@@ -345,16 +352,6 @@ public class ParserTester {
       }
     }
     return new BasicParseTree<String>(rule, nodes);
-  }
-
-  @SuppressWarnings("unchecked")
-  public static Parser<String> getParser(Class<? extends Parser> clazz, Grammar<String> grammar) {
-    try {
-      Constructor<? extends Parser> c = clazz.getConstructor(Grammar.class);
-      return (Parser<String>)c.newInstance(grammar);
-    } catch(Exception e) {
-      throw new RuntimeException(e);
-    }
   }
 
   public static Source<String> getSource(String... string) {

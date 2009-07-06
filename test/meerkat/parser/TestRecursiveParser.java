@@ -13,17 +13,23 @@ public class TestRecursiveParser {
 
   @Test
   public void test() {
+    ParserFactory parserFactory = new ParserFactory() {
+      @Override
+      public <T> Parser<T> newParser(Grammar<T> grammar, Class<T> clazz) {
+        return new RecursiveParser<T>(grammar);
+      }
+    };
     //testRecursionDetection(RecursiveParser.class);
-    testDirectLR(RecursiveParser.class);
-    testIndirectLR(RecursiveParser.class);
+    testDirectLR(parserFactory);
+    testIndirectLR(parserFactory);
     //testJavaGrammar(RecursiveParser.class);
-    ParserTester.testParser(RecursiveParser.class);
-    ParserTester.testCaching(RecursiveParser.class);
+    ParserTester.testParser(parserFactory);
+    ParserTester.testCaching(parserFactory);
   }
 
-  public void testDirectLR(Class<? extends Parser> clazz) {
+  public void testDirectLR(ParserFactory parserFactory) {
     Grammar<String> g = getDirectLRGrammar();
-    Parser<String> p = getParser(clazz, g);
+    Parser<String> p = parserFactory.newParser(g, String.class);
     Rule<String> expr = g.getStartingRule();
     Rule<String> digit = new BasicRule<String>("digit", g);
     Rule<String> num = new BasicRule<String>("num", g);
@@ -82,9 +88,9 @@ public class TestRecursiveParser {
     assertEquals(getSourceForString("5-2-1xy").getStream().getRest().getRest().getRest().getRest().getRest(), r.getRest());
   }
 
-  public void testRecursionDetection(Class<? extends Parser> clazz) {
+  public void testRecursionDetection(ParserFactory parserFactory) {
     Grammar<String> g = getDirectLRGrammar();
-    Parser<String> p = getParser(clazz, g);
+    Parser<String> p = parserFactory.newParser(g, String.class);
     Rule<String> expr = g.getStartingRule();
     Rule<String> digit = new BasicRule<String>("digit", g);
     Rule<String> num = new BasicRule<String>("num", g);
@@ -110,9 +116,9 @@ public class TestRecursiveParser {
     return ugf.getGrammar();
   }
 
-  private static void testIndirectLR(Class<? extends Parser> clazz) {
+  private static void testIndirectLR(ParserFactory parserFactory) {
     Grammar<String> g = getIndirectLRGrammar();
-    Parser<String> p = getParser(clazz, g);
+    Parser<String> p = parserFactory.newParser(g, String.class);
     Rule<String> x = new BasicRule<String>("x", g);
     Rule<String> expr = new BasicRule<String>("expr", g);
     Rule<String> num = new BasicRule<String>("num", g);
@@ -147,9 +153,9 @@ public class TestRecursiveParser {
     return ugf.getGrammar();
   }
 
-  private static void testJavaGrammar(Class<? extends Parser> clazz) {
+  private static void testJavaGrammar(ParserFactory parserFactory) {
     Grammar<String> g = getJavaGrammar();
-    Parser<String> p = getParser(clazz, g);
+    Parser<String> p = parserFactory.newParser(g, String.class);
 
     Result<String> r;
 
