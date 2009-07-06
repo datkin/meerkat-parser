@@ -16,11 +16,10 @@ public class SpliceList<T> implements Iterable<T> {
     this.tail = this.head;
   }
 
-  public LinkedNode<T> add(T value) {
+  public void add(T value) {
     LinkedNode<T> node = new LinkedNode<T>(value);
     this.tail.setNext(node);
     this.tail = node;
-    return this.tail;
   }
 
   // drop everything *after* this node

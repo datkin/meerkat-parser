@@ -71,9 +71,7 @@ public class GrammarMethodEmitter<T> implements GrammarVisitor<T, Void> {
       mw.visitVarInsn(ALOAD, resultRegister);
       mw.visitVarInsn(ALOAD, tempRegister);
       mw.visitMethodInsn(INVOKEINTERFACE, Result.class, "getValue", ParseNode.class);
-      // TODO: modify SpliceList.add to be void - avoids extra pop insns
-      mw.visitMethodInsn(INVOKEVIRTUAL, SpliceList.class, "add", LinkedNode.class, Object.class);
-      mw.visitInsn(POP);
+      mw.visitMethodInsn(INVOKEVIRTUAL, SpliceList.class, "add", Type.VOID_TYPE, Object.class);
     }
     mw.visitVarInsn(ALOAD, tempRegister);
     mw.visitMethodInsn(INVOKEINTERFACE, Result.class, "getRest", Stream.class);
@@ -317,8 +315,7 @@ public class GrammarMethodEmitter<T> implements GrammarVisitor<T, Void> {
       mw.visitVarInsn(ALOAD, streamRegister);
       mw.visitMethodInsn(INVOKEINTERFACE, Stream.class, "getNext", Object.class);
       mw.visitMethodInsn(INVOKESPECIAL, BasicParseLeaf.class, "<init>", Type.VOID_TYPE, Object.class);
-      mw.visitMethodInsn(INVOKEVIRTUAL, SpliceList.class, "add", LinkedNode.class, Object.class);
-      mw.visitInsn(POP);
+      mw.visitMethodInsn(INVOKEVIRTUAL, SpliceList.class, "add", Type.VOID_TYPE, Object.class);
       // create a new node, pass the terminal to it, then push the node to the splicelist
     }
 
