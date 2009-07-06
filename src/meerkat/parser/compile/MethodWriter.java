@@ -38,9 +38,12 @@ public class MethodWriter extends MethodAdapter {
     this.visitTypeInsn(opcode, Type.getInternalName(clazz));
   }
 
+  // TODO: This does not take into account locals used by "THIS" and arguments!!!!
   public int getNextLocal() {
     return this.nextLocal;
   }
+
+  // TODO: add getNextLocal() and *take*NextLocal() ?
 
   public void addLocal() {
     this.nextLocal++;

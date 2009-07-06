@@ -12,6 +12,7 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.util.TraceClassVisitor;
 import org.objectweb.asm.signature.SignatureVisitor;
 import org.objectweb.asm.signature.SignatureWriter;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import static org.objectweb.asm.Opcodes.*;
 
@@ -20,6 +21,10 @@ import meerkat.grammar.basic.BasicRule;
 import meerkat.grammar.util.TerminalCollector;
 import meerkat.parser.Parser;
 import meerkat.parser.Result;
+import meerkat.parser.ParseNode;
+import meerkat.parser.basic.BasicResult;
+import meerkat.parser.basic.BasicParseTree;
+import meerkat.parser.FailureResult;
 import meerkat.Source;
 import meerkat.Stream;
 
@@ -28,12 +33,16 @@ public class BasicParserCompiler implements ParserCompiler {
   private static final String parserInternalName = Type.getInternalName(Parser.class);
 
   @Override
+  // Name argument represents the internal name of the class
   public <T> byte[] writeClass(String name, Grammar<T> grammar, ObjectCompiler<T> terminalCompiler, Class<T> clazz) {
+    String descriptor = "L" + name + ";";
     ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS + ClassWriter.COMPUTE_FRAMES);
-    TraceClassVisitor cv = new TraceClassVisitor(cw, new java.io.PrintWriter(System.out));
+    //TraceClassVisitor cv = new TraceClassVisitor(cw, new java.io.PrintWriter(System.out));
+    ClassVisitor cv = cw;
     FieldVisitor fv;
     MethodWriter mw;
 
+    // public class <name> implements Parser<clazz> {
     cv.visit(
         V1_6,
         ACC_PUBLIC + ACC_SUPER,
@@ -43,7 +52,8 @@ public class BasicParserCompiler implements ParserCompiler {
         new String[] { parserInternalName }
         );
 
-    System.out.println(getSingleArgType(Grammar.class, clazz));
+    // private static final Grammar<clazz> grammar;
+    //System.out.println(getSingleArgType(Grammar.class, clazz));
     fv = cv.visitField(
         ACC_PRIVATE + ACC_STATIC + ACC_FINAL,
         "grammar",
@@ -53,6 +63,7 @@ public class BasicParserCompiler implements ParserCompiler {
         );
     fv.visitEnd();
 
+    // private static final Rule<clazz>[] rules;
     fv = cv.visitField(
         ACC_PRIVATE + ACC_STATIC + ACC_FINAL,
         "rules",
@@ -62,8 +73,19 @@ public class BasicParserCompiler implements ParserCompiler {
         );
     fv.visitEnd();
 
+    // private static final Result<T> failed;
+    fv = cv.visitField(
+        ACC_PRIVATE + ACC_STATIC + ACC_FINAL,
+        "failed",
+        Type.getDescriptor(Result.class),
+        getSingleArgType(Result.class, clazz),
+        null
+        );
+    fv.visitEnd();
+
     // Store the terminal directly, do not wrap it in a BasicTerminal object?
-    System.out.println(getSingleArgArrayType(Terminal.class, clazz));
+    // private static final Clazz[] terminals;
+    //System.out.println(getSingleArgArrayType(Terminal.class, clazz));
     fv = cv.visitField(
         ACC_PRIVATE + ACC_STATIC + ACC_FINAL,
         "terminals",
@@ -73,9 +95,7 @@ public class BasicParserCompiler implements ParserCompiler {
         );
     fv.visitEnd();
 
-    // add Rule[] field
-    // add Terminal[] field
-
+    // private static void <clinit>()
     mw = new MethodWriter(
         cv.visitMethod(
           ACC_STATIC,
@@ -86,14 +106,23 @@ public class BasicParserCompiler implements ParserCompiler {
           )
         );
     mw.visitCode();
+
+    // Initialize "failed"
+    mw.visitTypeInsn(NEW, FailureResult.class);
+    mw.visitInsn(DUP);
+    mw.visitMethodInsn(INVOKESPECIAL, FailureResult.class, "<init>", Type.VOID_TYPE);
+    mw.visitFieldInsn(PUTSTATIC, name, "failed", Type.getDescriptor(Result.class));
+
+    // Push grammar to stack and store to grammar
     new GrammarCompiler<T>(terminalCompiler).writeToStack(grammar, mw);
     mw.visitFieldInsn(PUTSTATIC, name, "grammar", Type.getDescriptor(Grammar.class));
 
+    // Go through each rule and store a copy to rules
     List<Rule<T>> rules = new LinkedList<Rule<T>>();
     for (Rule<T> rule : grammar.getRules()) {
       rules.add(rule);
     }
-    mw.visitLdcInsn(rules.size());
+    mw.visitLdcInsn(rules.size()); // TODO: some of those can be optimized to ICONST_x, modify MethodWriter to do this?
     mw.visitTypeInsn(ANEWARRAY, Rule.class);
     mw.visitFieldInsn(PUTSTATIC, name, "rules", "[" + Type.getDescriptor(Rule.class));
     for (int i = 0; i < rules.size(); i++) {
@@ -107,6 +136,7 @@ public class BasicParserCompiler implements ParserCompiler {
       mw.visitInsn(AASTORE);
     }
 
+    // Go through each terminal and store a copy to terminals
     List<T> terminals = new LinkedList<T>();
     for (T t : grammar.getStartingRule().accept(new TerminalCollector<T>(grammar))) {
       terminals.add(t);
@@ -125,6 +155,8 @@ public class BasicParserCompiler implements ParserCompiler {
     mw.visitMaxs(0, 0);
     mw.visitEnd();
 
+    // TODO: add Override annotation?
+    // public name() // parser default constructor
     mw = new MethodWriter(cv.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null));
     mw.visitCode();
     mw.visitVarInsn(ALOAD, 0);
@@ -133,6 +165,7 @@ public class BasicParserCompiler implements ParserCompiler {
     mw.visitMaxs(0, 0);
     mw.visitEnd();
 
+    // public Grammar<clazz> getGrammar()
     mw = new MethodWriter(
         cv.visitMethod(
           ACC_PUBLIC,
@@ -147,6 +180,102 @@ public class BasicParserCompiler implements ParserCompiler {
     mw.visitInsn(ARETURN);
     mw.visitMaxs(0, 0);
     mw.visitEnd();
+
+    // public Result<clazz> parse(Source<clazz>)
+    mw = new MethodWriter(
+        cv.visitMethod(
+          ACC_PUBLIC,
+          "parse",
+          Type.getMethodDescriptor(Type.getType(Result.class), new Type[] {Type.getType(Source.class)}),
+          getMethodSignature(clazz, Result.class, Source.class),
+          null
+          )
+        );
+    mw.visitCode();
+    mw.visitVarInsn(ALOAD, 0);
+    mw.visitVarInsn(ALOAD, 1);
+    // TODO: difference between INVOKEINTERFACE and INVOKEVIRTUAL?
+    mw.visitMethodInsn(INVOKEINTERFACE, Source.class, "getStream", Stream.class);
+    // the API's version takes internal names, but if we pass Strings to Type.getType, they need to be descriptors
+    mw.visitMethodInsn(INVOKEVIRTUAL, descriptor, "parse" + grammar.getStartingRule().getName(), Result.class, Stream.class);
+    mw.visitInsn(ARETURN);
+    mw.visitMaxs(0, 0);
+    mw.visitEnd();
+
+    // public Result<clazz> parse(Stream<clazz>, Rule<clazz>)
+    mw = new MethodWriter(
+        cv.visitMethod(
+          ACC_PUBLIC,
+          "parse",
+          Type.getMethodDescriptor(Type.getType(Result.class), new Type[] {Type.getType(Rule.class), Type.getType(Stream.class)}),
+          getMethodSignature(clazz, Result.class, Rule.class, Stream.class),
+          null
+          )
+        );
+    mw.visitCode();
+    for (int i = 0; i < rules.size(); i++) {
+      mw.visitFieldInsn(GETSTATIC, name, "rules", "[" + Type.getDescriptor(Rule.class));
+      mw.visitLdcInsn(i);
+      mw.visitInsn(AALOAD);
+      mw.visitVarInsn(ALOAD, 2);
+      mw.visitMethodInsn(INVOKEVIRTUAL, Object.class, "equals", "Z", Object.class);
+      Label label = new Label();
+      // ifeq, stay here, otherwise jump to label
+      mw.visitJumpInsn(IFEQ, label);
+      mw.visitVarInsn(ALOAD, 0);
+      mw.visitVarInsn(ALOAD, 1);
+      mw.visitMethodInsn(INVOKEVIRTUAL, descriptor, "parse" + rules.get(i).getName(), Result.class, Stream.class);
+      mw.visitInsn(ARETURN);
+      mw.visitLabel(label);
+    }
+    mw.visitTypeInsn(NEW, IllegalArgumentException.class);
+    mw.visitInsn(DUP);
+    mw.visitMethodInsn(INVOKESPECIAL, IllegalArgumentException.class, "<init>", Type.VOID_TYPE);
+    mw.visitInsn(ATHROW);
+    mw.visitMaxs(0, 0);
+    mw.visitEnd();
+
+    for (Rule<T> rule : rules) {
+      mw = new MethodWriter(
+          cv.visitMethod(
+            ACC_PRIVATE,
+            "parse" + rule.getName(),
+            Type.getMethodDescriptor(Type.getType(Result.class), new Type[] { Type.getType(Stream.class) }),
+            getMethodSignature(clazz, Result.class, Stream.class),
+            null
+            )
+          );
+      mw.visitCode();
+      mw.visitTypeInsn(NEW, SpliceList.class);
+      mw.visitInsn(DUP);
+      mw.visitMethodInsn(INVOKESPECIAL, SpliceList.class, "<init>", Type.VOID_TYPE);
+      mw.visitVarInsn(ASTORE, 2); // first free variable?
+      // we'll just use var 1 as the stream register?
+      //mw.visitVarInsn(ALOAD, 1); // push the stream to the stack to setup the stack discipline
+      Label failureLabel = new Label();
+      grammar.getExpr(rule).accept(new GrammarMethodEmitter<T>(name, mw, terminals, clazz, failureLabel));
+      mw.visitTypeInsn(NEW, BasicResult.class);
+      mw.visitInsn(DUP);
+      mw.visitTypeInsn(NEW, BasicParseTree.class);
+      mw.visitInsn(DUP);
+      mw.visitFieldInsn(GETSTATIC, name, "rules", "[" + Type.getDescriptor(Rule.class));
+      int ruleIndex = rules.indexOf(rule);
+      if (ruleIndex < 0)
+        throw new RuntimeException("Could not find rule " + rule);
+      mw.visitLdcInsn(ruleIndex);
+      mw.visitInsn(AALOAD);
+      mw.visitVarInsn(ALOAD, 2); // resultRegister
+      mw.visitMethodInsn(INVOKESPECIAL, BasicParseTree.class, "<init>", Type.VOID_TYPE, Rule.class, SpliceList.class);
+      mw.visitVarInsn(ALOAD, 1); // streamRegister
+      mw.visitMethodInsn(INVOKESPECIAL, BasicResult.class, "<init>", Type.VOID_TYPE, ParseNode.class, Stream.class);
+      mw.visitInsn(ARETURN);
+      mw.visitLabel(failureLabel);
+      mw.visitFieldInsn(GETSTATIC, name, "failed", Type.getDescriptor(Result.class));
+      mw.visitInsn(ARETURN);
+      mw.visitMaxs(0, 0);
+      mw.visitEnd();
+    }
+
     /*
     mw = new MethodWriter(
         cv.visitMethod(
@@ -162,14 +291,8 @@ public class BasicParserCompiler implements ParserCompiler {
 
     cv.visitEnd();
 
-    // new classwriter
-    // write grammar to static field with <clinit>
-    // write rules to static array with <clinit>
-    // write terms to static array with <clinit>
-    // write parse loop by traversing rules
-    // write rule parser by visiting each rule
-    //  (to "recursive" calls with a trampoline to keep the stack down?)
-    //  need to track all intermediate streams regardless... make trampolining a build option?
+    // do "recursive" calls with a trampoline to keep the stack down?
+    // need to track all intermediate streams regardless... make trampolining a build option?
     return cw.toByteArray();
   }
 
@@ -189,7 +312,6 @@ public class BasicParserCompiler implements ParserCompiler {
       withArgument(sv, clazz);
       sv.visitEnd();
     }
-    //System.out.println(sw);
     return sw.toString();
   }
 
@@ -209,7 +331,6 @@ public class BasicParserCompiler implements ParserCompiler {
       withArgument(sv, clazz);
       sv.visitEnd();
     }
-    //System.out.println(sw);
     return sw.toString();
   }
 
